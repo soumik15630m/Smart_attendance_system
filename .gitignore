@@ -1,0 +1,47 @@
+# --- Environment & Secrets ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# --- Python / FastAPI ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+*.log
+.pytest_cache/
+
+# --- Next.js / Node.js ---
+node_modules/
+.next/
+out/
+build/
+.pnp
+.pnp.js
+.vercel
+npm-debug.log*
+yarn-debug.log*
+
+# --- AI Models & Data ---
+# We ignore the models because they are large;
+# the code should auto-download them via InsightFace.
+.insightface/models/
+*.onnx
+*.trt
+*.engine
+
+# --- Database & Cache (Neon / Redis) ---
+.neon_local/
+*.rdb
+*.aof
+dump.rdb
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
