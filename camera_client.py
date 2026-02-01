@@ -9,6 +9,7 @@ import warnings
 import asyncio
 import websockets
 
+# --- CUDA Setup ---
 cuda_bin = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8\bin"
 if os.path.exists(cuda_bin):
     os.environ["PATH"] = cuda_bin + os.pathsep + os.environ["PATH"]
@@ -22,12 +23,11 @@ API_URL = "http://127.0.0.1:8000/attendance/identify"
 WS_URL = "ws://127.0.0.1:8000/ws/video-input"
 CAMERA_ID = 0
 
-
 class AsyncWebSocketClient:
     def __init__(self, uri):
         self.uri = uri
         self.loop = asyncio.new_event_loop()
-        self.queue = asyncio.Queue(maxsize=1) # Limit queue to keep stream real-time
+        self.queue = asyncio.Queue(maxsize=1)
         self.thread = threading.Thread(target=self._start_loop, daemon=True)
         self.thread.start()
 
@@ -36,7 +36,6 @@ class AsyncWebSocketClient:
         self.loop.run_until_complete(self._main_loop())
 
     async def _main_loop(self):
-        # it auto-reconnects
         while True:
             try:
                 async with websockets.connect(self.uri) as websocket:
@@ -49,9 +48,7 @@ class AsyncWebSocketClient:
                 await asyncio.sleep(2)
 
     def send_frame(self, frame_bytes):
-        """Thread-safe method to push frames from the sync loop."""
         if self.loop.is_running():
-            # If queue is full, discard old frame to prioritize current one
             if self.queue.full():
                 try: self.queue.get_nowait()
                 except: pass
@@ -67,23 +64,22 @@ detected_faces = []
 recognition_results = {}
 results_lock = threading.Lock()
 state_lock = threading.Lock()
+last_api_call = 0  # Initialize variable
 running = True
 
 def verify_face_worker(embedding_list, face_key):
-    """Background thread to handle server communication."""
     global recognition_results
     try:
         payload = {"embedding": embedding_list, "camera_id": "Pro_Cam_01"}
-        # Increased timeout for Neon DB latency
         response = requests.post(API_URL, json=payload, timeout=15)
 
         if response.status_code == 200:
             data = response.json()
             name = data.get("person_name", "Unknown")
+            # Green for success/ignored, Red for unknown
             color = (0, 255, 0) if data.get("status") in ["success", "ignored"] else (0, 0, 255)
 
             with results_lock:
-                # Store result for 10 seconds of persistence
                 recognition_results[face_key] = {
                     "name": name,
                     "color": color,
@@ -95,12 +91,17 @@ def verify_face_worker(embedding_list, face_key):
 def ai_worker():
     global detected_faces, last_api_call
     while running:
-        if latest_frame is None:
+        # Access the shared frame safely
+        with state_lock:
+            if latest_frame is None:
+                img_copy = None
+            else:
+                # We copy strictly here to avoid holding the lock during inference
+                img_copy = latest_frame.copy()
+
+        if img_copy is None:
             time.sleep(0.01)
             continue
-
-        with state_lock:
-            img_copy = latest_frame.copy()
 
         img_rgb = cv2.cvtColor(img_copy, cv2.COLOR_BGR2RGB)
         faces = app.get(img_rgb)
@@ -109,13 +110,15 @@ def ai_worker():
 
         for face in faces:
             bbox = face.bbox.astype(int)
-            # Create a spatial key (X_Y) to track the result even as the object refreshes
-            face_key = f"{bbox[0]//40}_{bbox[1]//40}"
+            # Use larger grid (e.g., 50px) or center point to reduce flickering
+            center_x = (bbox[0] + bbox[2]) // 2
+            center_y = (bbox[1] + bbox[3]) // 2
+            face_key = f"{center_x//50}_{center_y//50}"
 
             with results_lock:
-                # If we don't have a result or it's expired, trigger API
                 if face_key not in recognition_results or current_time > recognition_results[face_key]['expiry']:
-                    if (current_time - last_api_call) > 3.0:
+                    # Debounce API calls (every 2.0 seconds globally for simplicity, or per face)
+                    if (current_time - last_api_call) > 2.0:
                         last_api_call = current_time
                         threading.Thread(
                             target=verify_face_worker,
@@ -125,6 +128,7 @@ def ai_worker():
 
         with state_lock:
             detected_faces = faces
+
 def start_camera():
     global latest_frame, running
     cap = cv2.VideoCapture(CAMERA_ID)
@@ -136,32 +140,51 @@ def start_camera():
     while True:
         ret, frame = cap.read()
         if not ret: break
+
+        # 1. Standardize input (Mirror)
         frame = cv2.flip(frame, 1)
 
+        # 2. Update Shared State for AI (CLEAN FRAME ONLY)
         with state_lock:
-            latest_frame = frame
-            faces_to_draw = detected_faces
+            latest_frame = frame # Pass reference to the clean raw frame
+            faces_to_draw = detected_faces # Get latest detections
 
-        # Drawing logic for UI...
+        # 3. Create a Visualization Copy
+        # CRITICAL FIX: We draw on a COPY, not the original frame.
+        # This keeps 'latest_frame' clean for the AI thread.
+        vis_frame = frame.copy()
+
+        # 4. Draw UI on the Visualization Frame
         for face in faces_to_draw:
             bbox = face.bbox.astype(int)
-            face_key = f"{bbox[0]//40}_{bbox[1]//40}"
-            name, color = "Scanning...", (0, 255, 255)
+
+            # Robust Key Generation (using Center Point)
+            center_x = (bbox[0] + bbox[2]) // 2
+            center_y = (bbox[1] + bbox[3]) // 2
+            face_key = f"{center_x//50}_{center_y//50}"
+
+            name, color = "Scanning...", (0, 255, 255) # Default Yellow
 
             with results_lock:
+                # Try exact match
                 if face_key in recognition_results:
                     res = recognition_results[face_key]
                     if time.time() < res['expiry']:
                         name, color = res['name'], res['color']
 
-            cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
-            cv2.putText(frame, name, (bbox[0], bbox[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            # Explicit integer casting for OpenCV to ensure box draws correctly
+            start_point = (int(bbox[0]), int(bbox[1]))
+            end_point = (int(bbox[2]), int(bbox[3]))
 
-        # STREAMING ENGINE: Send processed frame to Web Relay
-        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            cv2.rectangle(vis_frame, start_point, end_point, color, 2)
+            cv2.putText(vis_frame, name, (int(bbox[0]), int(bbox[1])-10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+        # 5. Send VISUALIZATION frame to Web Relay & Local Display
+        _, buffer = cv2.imencode('.jpg', vis_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
         ws_client.send_frame(buffer.tobytes())
 
-        cv2.imshow('Face Attendance', frame)
+        cv2.imshow('Face Attendance', vis_frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             running = False
             break

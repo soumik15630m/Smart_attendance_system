@@ -3,9 +3,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.config import settings
-from src.routers import attendance_router, health_router
 from src.database import engine
-from src.routers import attendance_router, web_stream
+# Update the import to include persons_router
+from src.routers import attendance_router, health_router, web_stream, persons_router
 
 # Lifecycle Manager
 @asynccontextmanager
@@ -29,10 +29,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+# --- Register Routers ---
 app.include_router(attendance_router)
 app.include_router(health_router)
 app.include_router(web_stream.router)
+app.include_router(persons_router)  # <--- Add this line
 
 @app.get("/")
 async def root():
