@@ -1,11 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from typing import List, Optional
+import datetime
+
 from src.database import get_db
 from src.redis_config import get_redis
 from src.services.attendance import AttendanceService
-from src.services.person import PersonService
+from src.services.recognition import RecognitionService
+from src.models.attendance import Attendance
+from src.schemas.attendance import AttendanceRead
 from pydantic import BaseModel
-from typing import List
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 
@@ -19,10 +25,10 @@ async def identify_and_mark(
         db: AsyncSession = Depends(get_db),
         redis = Depends(get_redis)
 ):
-    person_service = PersonService(db)
+    rec_service = RecognitionService(db)
     att_service = AttendanceService(db, redis)
 
-    person = await person_service.identify_person(request.embedding)
+    person = await rec_service.find_nearest_match(request.embedding)
 
     if not person:
         return {"status": "unknown", "message": "No matching person found"}
@@ -41,3 +47,27 @@ async def identify_and_mark(
             "message": "Attendance already marked recently",
             "person_name": person.name
         }
+
+@router.get("/history", response_model=List[AttendanceRead])
+async def get_attendance_history(
+        skip: int = 0,
+        limit: int = 100,
+        date: Optional[str] = Query(None, description="Filter by date (YYYY-MM-DD)"),
+        db: AsyncSession = Depends(get_db)
+):
+    """
+    Fetch attendance history with optional date filtering.
+    """
+    query = select(Attendance).options(selectinload(Attendance.person))
+
+    if date:
+        try:
+            filter_date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+            query = query.where(Attendance.date == filter_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    query = query.order_by(Attendance.created_at.desc()).offset(skip).limit(limit)
+
+    result = await db.execute(query)
+    return result.scalars().all()
