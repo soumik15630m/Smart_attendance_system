@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import threading
 import cv2
@@ -26,11 +27,14 @@ default_cuda_path = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8\b
 cuda_bin = os.getenv("CUDA_PATH_BIN", default_cuda_path)
 if os.path.exists(cuda_bin):
     os.environ["PATH"] = cuda_bin + os.pathsep + os.environ["PATH"]
-    try:
-        os.add_dll_directory(cuda_bin)
-    except Exception:  # Use Exception instead of a bare except
-        pass
 
+    if sys.platform == 'win32':
+        add_dll = getattr(os, "add_dll_directory", None)
+        if add_dll:
+            try:
+                add_dll(cuda_bin) # Use 'cuda_bin' here
+            except Exception:
+                pass
 warnings.filterwarnings("ignore")
 
 

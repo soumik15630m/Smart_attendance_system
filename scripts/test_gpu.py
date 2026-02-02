@@ -2,14 +2,7 @@ import os
 import sys
 import onnxruntime as ort
 
-if sys.platform == 'win32':
-    # Use getattr to prevent mypy from flagging missing attribute on non-Windows
-    add_dll = getattr(os, "add_dll_directory", None)
-    if add_dll:
-        try:
-            add_dll(path) # or cuda_bin
-        except Exception:
-            pass
+
 print("----------------------------------------------------------------")
 print(f"ONNX Runtime Version: {ort.__version__}")
 print("----------------------------------------------------------------")
@@ -31,15 +24,16 @@ print("Scanning for DLL folders...")
 for path in paths_to_check:
     if os.path.exists(path):
         print(f"   ✅ Found folder: {path}")
-        try:
-            os.add_dll_directory(path)
-            found_paths.append(path)
-        except AttributeError:
-            pass  # Python < 3.8
-    else:
-        # Only print missing if it's the main CUDA one, otherwise it gets spammy
-        if "Toolkit" in path:
-            print(f" Folder NOT found: {path}")
+
+        # Safe DLL loading for Windows/Mypy
+        if sys.platform == 'win32':
+            add_dll = getattr(os, "add_dll_directory", None)
+            if add_dll:
+                try:
+                    add_dll(path) # Use the loop variable 'path'
+                except Exception:
+                    pass
+        found_paths.append(path)
 
 if not found_paths:
     print(
