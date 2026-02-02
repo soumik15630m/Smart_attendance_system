@@ -27,8 +27,11 @@ print("--------------------------------------------------")
 # Suppress ONNX warnings
 warnings.filterwarnings("ignore")
 
-app = FaceAnalysis(name='buffalo_s', providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+app = FaceAnalysis(
+    name="buffalo_s", providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
+)
 app.prepare(ctx_id=0, det_size=(640, 640))
+
 
 def enroll():
     # Gather User Info
@@ -58,36 +61,48 @@ def enroll():
         display_frame = frame.copy()
 
         faces = app.get(frame)
-        status_color = (0, 0, 255) # Red (No Face)
+        status_color = (0, 0, 255)  # Red (No Face)
         status_text = "No Face Detected"
 
         if len(faces) == 1:
-            status_color = (0, 255, 0) # Green (Good)
+            status_color = (0, 255, 0)  # Green (Good)
             status_text = "Ready to Register (Press 's')"
             bbox = faces[0].bbox.astype(int)
-            cv2.rectangle(display_frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), status_color, 2)
+            cv2.rectangle(
+                display_frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), status_color, 2
+            )
         elif len(faces) > 1:
-            status_color = (0, 255, 255) # Yellow (Too Many)
+            status_color = (0, 255, 255)  # Yellow (Too Many)
             status_text = "Too many faces! Only 1 allowed."
 
-        cv2.putText(display_frame, status_text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
+        cv2.putText(
+            display_frame,
+            status_text,
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            status_color,
+            2,
+        )
         cv2.imshow("Registration", display_frame)
 
         key = cv2.waitKey(1) & 0xFF
 
-        if key == ord('s') and len(faces) == 1:
+        if key == ord("s") and len(faces) == 1:
             face = faces[0]
             payload = {
                 "name": name,
                 "employee_id": emp_id if emp_id else None,
                 "role": "Employee",
-                "embedding": face.embedding.tolist()
+                "embedding": face.embedding.tolist(),
             }
 
             print("Sending data to server...")
             try:
                 headers = {"X-API-Key": os.getenv("API_KEY", "")}
-                response = requests.post(REG_URL, json=payload, headers=headers, timeout=10)
+                response = requests.post(
+                    REG_URL, json=payload, headers=headers, timeout=10
+                )
 
                 if response.status_code == 200:
                     print(f" Success! {name} registered.")
@@ -97,12 +112,13 @@ def enroll():
             except Exception as e:
                 print(f" Connection Error: {e}")
 
-        elif key == ord('q'):
+        elif key == ord("q"):
             print("Cancelled.")
             break
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     enroll()

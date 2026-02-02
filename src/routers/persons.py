@@ -10,11 +10,9 @@ from src.services.recognition import RecognitionService
 
 router = APIRouter(prefix="/persons", tags=["persons"])
 
+
 @router.post("/register", response_model=PersonRead)
-async def register_person(
-        person_in: PersonCreate,
-        db: AsyncSession = Depends(get_db)
-):
+async def register_person(person_in: PersonCreate, db: AsyncSession = Depends(get_db)):
     """
     Registers a new person with their face embedding.
     prevents duplicate faces!
@@ -27,7 +25,7 @@ async def register_person(
         if result.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Employee ID '{person_in.employee_id}' already registered."
+                detail=f"Employee ID '{person_in.employee_id}' already registered.",
             )
 
     # 2. Check if Face already exists (NEW LOGIC)
@@ -37,7 +35,7 @@ async def register_person(
     if existing_person:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Face already registered! Matched with: {existing_person.name} ({existing_person.employee_id})"
+            detail=f"Face already registered! Matched with: {existing_person.name} ({existing_person.employee_id})",
         )
 
     # 3. Create the Person model instance
@@ -46,7 +44,7 @@ async def register_person(
         employee_id=person_in.employee_id,
         role=person_in.role,
         embedding=person_in.embedding,
-        is_active=person_in.is_active
+        is_active=person_in.is_active,
     )
 
     # 4. Save to Database
@@ -59,11 +57,10 @@ async def register_person(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Integrity Error: Duplicate data or invalid format."
+            detail="Integrity Error: Duplicate data or invalid format.",
         )
     except Exception as e:
         await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )

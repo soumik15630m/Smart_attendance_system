@@ -9,17 +9,15 @@ engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     future=True,
-    pool_pre_ping=True  # Handles lost connections gracefully
+    pool_pre_ping=True,  # Handles lost connections gracefully
 )
 
 # Create the Session Factory
 # expire_on_commit=False is CRITICAL for async usage.
 AsyncSessionLocal = async_sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autoflush=False
+    bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
 )
+
 
 # Dependency Injection for FastAPI
 # This yields a session for each request and closes it automatically after.

@@ -14,9 +14,9 @@ SERVER_PORT = os.getenv("SERVER_PORT", "8000")
 CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", 0))
 
 # Settings for V1 Quality Control
-MIN_BRIGHTNESS = 60       # 0-255 (Below this = "Too Dark")
-MIN_FACE_WIDTH = 60       # Pixels (Below this = "Too Far")
-MIN_DET_SCORE = 0.60      # 0-1.0 (Below this = "Not a clear face")
+MIN_BRIGHTNESS = 60  # 0-255 (Below this = "Too Dark")
+MIN_FACE_WIDTH = 60  # Pixels (Below this = "Too Far")
+MIN_DET_SCORE = 0.60  # 0-1.0 (Below this = "Not a clear face")
 
 API_URL = f"http://{SERVER_IP}:{SERVER_PORT}/attendance/identify"
 WS_URL = f"ws://{SERVER_IP}:{SERVER_PORT}/ws/video-input"
@@ -67,9 +67,12 @@ class AsyncWebSocketClient:
                     pass
             self.loop.call_soon_threadsafe(self.queue.put_nowait, frame_bytes)
 
+
 # --- AI Setup ---
 print("[-] Loading AI Models...")
-app = FaceAnalysis(name='buffalo_s', providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+app = FaceAnalysis(
+    name="buffalo_s", providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
+)
 app.prepare(ctx_id=0, det_size=(640, 640))
 print(" AI Ready.")
 
@@ -83,9 +86,11 @@ state_lock = threading.Lock()
 last_api_call = 0
 running = True
 
+
 def get_brightness(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     return np.mean(gray)
+
 
 def verify_face_worker(embedding_list, face_key):
     global recognition_results
@@ -105,10 +110,11 @@ def verify_face_worker(embedding_list, face_key):
                 recognition_results[face_key] = {
                     "name": name,
                     "color": color,
-                    "expiry": time.time() + 5.0 # Cache for 5 seconds
+                    "expiry": time.time() + 5.0,  # Cache for 5 seconds
                 }
     except Exception:
         pass
+
 
 def ai_worker():
     global detected_faces, last_api_call
@@ -156,20 +162,24 @@ def ai_worker():
             # Generate key for API caching
             center_x = (bbox[0] + bbox[2]) // 2
             center_y = (bbox[1] + bbox[3]) // 2
-            face_key = f"{center_x//50}_{center_y//50}"
+            face_key = f"{center_x // 50}_{center_y // 50}"
 
             with results_lock:
-                if face_key not in recognition_results or current_time > recognition_results[face_key]['expiry']:
+                if (
+                    face_key not in recognition_results
+                    or current_time > recognition_results[face_key]["expiry"]
+                ):
                     if (current_time - last_api_call) > 1.0:
                         last_api_call = current_time
                         threading.Thread(
                             target=verify_face_worker,
                             args=(face.embedding.tolist(), face_key),
-                            daemon=True
+                            daemon=True,
                         ).start()
 
         with state_lock:
             detected_faces = valid_faces
+
 
 def start_camera():
     global latest_frame, running
@@ -198,13 +208,29 @@ def start_camera():
 
         brightness = get_brightness(vis_frame)
         if brightness < MIN_BRIGHTNESS:
-            cv2.putText(vis_frame, "TOO DARK", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 3)
-            cv2.putText(vis_frame, "Please turn on lights", (55, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+            cv2.putText(
+                vis_frame,
+                "TOO DARK",
+                (50, 100),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                2,
+                (0, 0, 255),
+                3,
+            )
+            cv2.putText(
+                vis_frame,
+                "Please turn on lights",
+                (55, 150),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (0, 0, 255),
+                2,
+            )
         for face in faces_to_draw:
             bbox = face.bbox.astype(int)
             center_x = (bbox[0] + bbox[2]) // 2
             center_y = (bbox[1] + bbox[3]) // 2
-            face_key = f"{center_x//50}_{center_y//50}"
+            face_key = f"{center_x // 50}_{center_y // 50}"
             # width = bbox[2] - bbox[0]
 
             name, color = "Scanning...", (0, 255, 255)
@@ -213,22 +239,31 @@ def start_camera():
             with results_lock:
                 if face_key in recognition_results:
                     res = recognition_results[face_key]
-                    if time.time() < res['expiry']:
-                        name, color = res['name'], res['color']
+                    if time.time() < res["expiry"]:
+                        name, color = res["name"], res["color"]
 
             cv2.rectangle(vis_frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
-            cv2.putText(vis_frame, name, (bbox[0], bbox[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            cv2.putText(
+                vis_frame,
+                name,
+                (bbox[0], bbox[1] - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                color,
+                2,
+            )
 
-        _, buffer = cv2.imencode('.jpg', vis_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        _, buffer = cv2.imencode(".jpg", vis_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
         ws_client.send_frame(buffer.tobytes())
 
-        cv2.imshow('Face Attendance Client (V1)', vis_frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        cv2.imshow("Face Attendance Client (V1)", vis_frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             running = False
             break
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     start_camera()

@@ -11,7 +11,7 @@ from src.models.attendance import Attendance
 
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-if os.path.basename(script_dir) == 'scripts':
+if os.path.basename(script_dir) == "scripts":
     project_root = os.path.dirname(script_dir)
 else:
     project_root = script_dir
@@ -29,15 +29,18 @@ logging.getLogger("sqlalchemy.dialects").setLevel(logging.WARNING)
 
 try:
     import src.config
+
     src.config.settings.DEBUG = False
 except ImportError:
     pass
 
 
 async def show_attendance():
-    print("\n" + "="*95)
-    print(f" {'ID':<5} | {'Date':<12} | {'Time':<10} | {'Name':<20} | {'Employee ID':<15} | {'Method':<10}")
-    print("="*95)
+    print("\n" + "=" * 95)
+    print(
+        f" {'ID':<5} | {'Date':<12} | {'Time':<10} | {'Name':<20} | {'Employee ID':<15} | {'Method':<10}"
+    )
+    print("=" * 95)
 
     try:
         async with AsyncSessionLocal() as session:
@@ -58,14 +61,17 @@ async def show_attendance():
                     emp_id = record.person.employee_id if record.person else "---"
                     time_str = record.created_at.strftime("%H:%M:%S")
 
-                    print(f" {record.id:<5} | {str(record.date):<12} | {time_str:<10} | {name:<20} | {emp_id:<15} | {record.method:<10}")
+                    print(
+                        f" {record.id:<5} | {str(record.date):<12} | {time_str:<10} | {name:<20} | {emp_id:<15} | {record.method:<10}"
+                    )
 
     except Exception as e:
         print(f"\n[!] Error fetching data: {e}")
         if "DATABASE_URL" in str(e):
             print("    Hint: Check your .env file location.")
 
-    print("="*95 + "\n")
+    print("=" * 95 + "\n")
+
 
 if __name__ == "__main__":
     try:

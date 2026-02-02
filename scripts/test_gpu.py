@@ -26,19 +26,21 @@ for path in paths_to_check:
             os.add_dll_directory(path)
             found_paths.append(path)
         except AttributeError:
-            pass # Python < 3.8
+            pass  # Python < 3.8
     else:
         # Only print missing if it's the main CUDA one, otherwise it gets spammy
         if "Toolkit" in path:
             print(f" Folder NOT found: {path}")
 
 if not found_paths:
-    print("\nCRITICAL: No CUDA or cuDNN folders found. Did you install them to a custom location?")
+    print(
+        "\nCRITICAL: No CUDA or cuDNN folders found. Did you install them to a custom location?"
+    )
 
 required_files = {
     "cublas64_12.dll": "CUDA (Main Driver)",
     "cudnn64_9.dll": "cuDNN (Neural Network)",
-    "zlibwapi.dll": "ZLIB (Required Helper)"
+    "zlibwapi.dll": "ZLIB (Required Helper)",
 }
 
 print("\nChecking for specific files in detected folders:")
@@ -59,18 +61,22 @@ for filename, desc in required_files.items():
 
 print("\n Attempting to load NVIDIA GPU...")
 try:
-    providers = ['CUDAExecutionProvider']
+    providers = ["CUDAExecutionProvider"]
     # We must try to create a session to trigger the actual load error
     # Creating a dummy check isn't enough
-    if 'CUDAExecutionProvider' in ort.get_available_providers():
+    if "CUDAExecutionProvider" in ort.get_available_providers():
         # Just because it's listed doesn't mean it works.
         # We need to verify if it throws an error when used.
         # Simple test: Can we set the provider?
         print("   -> Provider listed by ONNX Runtime. Validating...")
 
         if len(missing_files) > 0:
-            print(f"\n WARNING: It will likely fail because you are missing: {missing_files}")
-            print("   Python can see the 'option' to use CUDA, but the driver will crash on launch.")
+            print(
+                f"\n WARNING: It will likely fail because you are missing: {missing_files}"
+            )
+            print(
+                "   Python can see the 'option' to use CUDA, but the driver will crash on launch."
+            )
         else:
             print("\n SUCCESS! All files present. GPU is ready!")
 

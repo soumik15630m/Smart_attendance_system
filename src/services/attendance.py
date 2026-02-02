@@ -1,8 +1,9 @@
 import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError # Add this import
+from sqlalchemy.exc import IntegrityError  # Add this import
 from src.models.attendance import Attendance
 from redis.asyncio import Redis
+
 
 class AttendanceService:
     def __init__(self, db: AsyncSession, redis: Redis):
@@ -23,7 +24,7 @@ class AttendanceService:
                 person_id=person_id,
                 date=today,
                 method="face_bio",
-                confidence_score=0.99
+                confidence_score=0.99,
             )
             self.db.add(new_record)
             await self.db.commit()

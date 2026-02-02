@@ -10,6 +10,7 @@ from src.config import settings
 from src.database import engine
 from src.routers import attendance_router, health_router, web_stream, persons_router
 
+
 # Lifecycle Manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,7 +21,9 @@ async def lifespan(app: FastAPI):
         alembic_ini_path = os.path.join(root_dir, "alembic.ini")
 
         alembic_cfg = Config(alembic_ini_path)
-        alembic_cfg.set_main_option("script_location", os.path.join(root_dir, "alembic"))
+        alembic_cfg.set_main_option(
+            "script_location", os.path.join(root_dir, "alembic")
+        )
         command.upgrade(alembic_cfg, "head")
         print("Database is up to date.")
     except Exception as e:
@@ -37,11 +40,8 @@ async def lifespan(app: FastAPI):
     print("Server shutting down...")
     await engine.dispose()
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    lifespan=lifespan
-)
+
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,14 +57,17 @@ app.include_router(health_router)
 app.include_router(web_stream.router)
 app.include_router(persons_router)
 
+
 def start():
     import uvicorn
+
     uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)
+
 
 @app.get("/")
 async def root():
     return {
         "message": f"Welcome to {settings.PROJECT_NAME}",
         "docs": "/docs",
-        "version": settings.VERSION
+        "version": settings.VERSION,
     }

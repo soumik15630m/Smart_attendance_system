@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from src.models.person import Person
 
+
 class PersonService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -13,7 +14,11 @@ class PersonService:
         """
         # We query the 'persons' table and sort by the closest embedding
         # LIMIT 1 gives us the best match
-        query = select(Person).order_by(Person.embedding.cosine_distance(embedding)).limit(1)
+        query = (
+            select(Person)
+            .order_by(Person.embedding.cosine_distance(embedding))
+            .limit(1)
+        )
         result = await self.db.execute(query)
         person = result.scalar_one_or_none()
 

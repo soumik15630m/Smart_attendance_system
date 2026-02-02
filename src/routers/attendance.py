@@ -15,15 +15,17 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 
+
 class IdentifyRequest(BaseModel):
     embedding: List[float]
     camera_id: str
 
+
 @router.post("/identify")
 async def identify_and_mark(
-        request: IdentifyRequest,
-        db: AsyncSession = Depends(get_db),
-        redis = Depends(get_redis)
+    request: IdentifyRequest,
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ):
     rec_service = RecognitionService(db)
     att_service = AttendanceService(db, redis)
@@ -39,21 +41,22 @@ async def identify_and_mark(
         return {
             "status": "success",
             "person_name": person.name,
-            "employee_id": person.employee_id
+            "employee_id": person.employee_id,
         }
     else:
         return {
             "status": "ignored",
             "message": "Attendance already marked recently",
-            "person_name": person.name
+            "person_name": person.name,
         }
+
 
 @router.get("/history", response_model=List[AttendanceRead])
 async def get_attendance_history(
-        skip: int = 0,
-        limit: int = 100,
-        date: Optional[str] = Query(None, description="Filter by date (YYYY-MM-DD)"),
-        db: AsyncSession = Depends(get_db)
+    skip: int = 0,
+    limit: int = 100,
+    date: Optional[str] = Query(None, description="Filter by date (YYYY-MM-DD)"),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Fetch attendance history with optional date filtering.
@@ -65,7 +68,9 @@ async def get_attendance_history(
             filter_date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
             query = query.where(Attendance.date == filter_date)
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+            raise HTTPException(
+                status_code=400, detail="Invalid date format. Use YYYY-MM-DD"
+            )
 
     query = query.order_by(Attendance.created_at.desc()).offset(skip).limit(limit)
 

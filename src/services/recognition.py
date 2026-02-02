@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.person import Person
 from src.config import settings
 
+
 class RecognitionService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -44,13 +45,15 @@ class RecognitionService:
         # OR update query to return distance. Let's do the query update for precision.
 
         query_with_dist = (
-            select(Person, Person.embedding.cosine_distance(embedding).label("distance"))
+            select(
+                Person, Person.embedding.cosine_distance(embedding).label("distance")
+            )
             .order_by("distance")
             .limit(1)
         )
 
         result = await self.db.execute(query_with_dist)
-        match = result.first() # Returns (Person, distance) tuple
+        match = result.first()  # Returns (Person, distance) tuple
 
         if not match:
             return None

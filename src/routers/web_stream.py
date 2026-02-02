@@ -3,6 +3,7 @@ from typing import List
 
 router = APIRouter(prefix="/ws", tags=["streaming"])
 
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -30,7 +31,9 @@ class ConnectionManager:
             except Exception:
                 continue
 
+
 manager = ConnectionManager()
+
 
 @router.websocket("/stream")
 async def websocket_endpoint(websocket: WebSocket):
@@ -42,6 +45,7 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
 
 @router.websocket("/video-input")
 async def video_input_endpoint(websocket: WebSocket):

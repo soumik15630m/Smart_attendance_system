@@ -10,6 +10,7 @@ from src.database import AsyncSessionLocal
 from src.models.person import Person
 from sqlalchemy import select
 
+
 async def seed():
     async with AsyncSessionLocal() as session:
         # Check if DB is already seeded
@@ -27,12 +28,13 @@ async def seed():
             name="Elon Musk",
             role="admin",
             employee_id="TESLA-001",
-            embedding=fake_embedding
+            embedding=fake_embedding,
         )
 
         session.add(test_user)
         await session.commit()
         print(f"Added user: {test_user.name} with ID: {test_user.employee_id}")
+
 
 if __name__ == "__main__":
     asyncio.run(seed())
