@@ -10,13 +10,13 @@ import asyncio
 import websockets
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 SERVER_IP = os.getenv("SERVER_IP", "127.0.0.1")
 SERVER_PORT = os.getenv("SERVER_PORT", "8000")
 CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", 0))
 
-# Settings for V1 Quality Control
 MIN_BRIGHTNESS = 60  # 0-255 (Below this = "Too Dark")
 MIN_FACE_WIDTH = 60  # Pixels (Below this = "Too Far")
 MIN_DET_SCORE = 0.60  # 0-1.0 (Below this = "Not a clear face")
@@ -24,12 +24,13 @@ MIN_DET_SCORE = 0.60  # 0-1.0 (Below this = "Not a clear face")
 API_URL = f"http://{SERVER_IP}:{SERVER_PORT}/attendance/identify"
 WS_URL = f"ws://{SERVER_IP}:{SERVER_PORT}/ws/video-input"
 
-
+# --- CUDA Setup (Platform Safe) ---
 cuda_bin = os.getenv("CUDA_PATH_BIN", "")
 
 if cuda_bin and os.path.exists(cuda_bin):
     os.environ["PATH"] = cuda_bin + os.pathsep + os.environ["PATH"]
 
+    # Safe DLL loading for Windows (CI/Linux compatible)
     if sys.platform == "win32":
         add_dll = getattr(os, "add_dll_directory", None)
         if add_dll:
@@ -39,7 +40,8 @@ if cuda_bin and os.path.exists(cuda_bin):
                 pass
 
 warnings.filterwarnings("ignore")
-from insightface.app import FaceAnalysis
+# FIX: Added 'noqa: E402' to tell Ruff this late import is intentional
+from insightface.app import FaceAnalysis  # noqa: E402
 
 
 # --- WebSocket Client ---
@@ -47,6 +49,7 @@ class AsyncWebSocketClient:
     def __init__(self, uri: str):
         self.uri = uri
         self.loop = asyncio.new_event_loop()
+        # FIX: Added type annotation for mypy
         self.queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=1)
         self.thread = threading.Thread(target=self._start_loop, daemon=True)
         self.thread.start()
@@ -63,7 +66,7 @@ class AsyncWebSocketClient:
                     while True:
                         frame_bytes = await self.queue.get()
                         await websocket.send(frame_bytes)
-            except Exception:  # FIX: No bare except
+            except Exception:
                 await asyncio.sleep(2)
 
     def send_frame(self, frame_bytes: bytes) -> None:
@@ -71,11 +74,12 @@ class AsyncWebSocketClient:
             if self.queue.full():
                 try:
                     self.queue.get_nowait()
-                except Exception:  # FIX: No bare except
+                except Exception:
                     pass
             self.loop.call_soon_threadsafe(self.queue.put_nowait, frame_bytes)
 
 
+# --- AI Setup ---
 print("[-] Loading AI Models...")
 app = FaceAnalysis(
     name="buffalo_s", providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
@@ -85,9 +89,10 @@ print(" AI Ready.")
 
 ws_client = AsyncWebSocketClient(WS_URL)
 
+# Global State (Typed for Mypy)
 latest_frame = None
-detected_faces: list = []  # FIX: Explicit type hint
-recognition_results: dict = {}  # FIX: Explicit type hint
+detected_faces: list = []
+recognition_results: dict = {}
 results_lock = threading.Lock()
 state_lock = threading.Lock()
 last_api_call = 0
@@ -202,7 +207,6 @@ def start_camera():
 
     while True:
         ret, frame = cap.read()
-        # FIX: Formatted to 2 lines
         if not ret:
             break
 
@@ -240,7 +244,6 @@ def start_camera():
             center_x = (bbox[0] + bbox[2]) // 2
             center_y = (bbox[1] + bbox[3]) // 2
             face_key = f"{center_x // 50}_{center_y // 50}"
-            # FIX: Removed unused 'width' variable here
 
             name, color = "Scanning...", (0, 255, 255)
 
