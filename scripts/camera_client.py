@@ -8,7 +8,9 @@ import requests
 import warnings
 import asyncio
 import websockets
-from insightface.app import FaceAnalysis
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SERVER_IP = os.getenv("SERVER_IP", "127.0.0.1")
 SERVER_PORT = os.getenv("SERVER_PORT", "8000")
@@ -22,36 +24,38 @@ MIN_DET_SCORE = 0.60  # 0-1.0 (Below this = "Not a clear face")
 API_URL = f"http://{SERVER_IP}:{SERVER_PORT}/attendance/identify"
 WS_URL = f"ws://{SERVER_IP}:{SERVER_PORT}/ws/video-input"
 
-# --- CUDA Setup ---
-default_cuda_path = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8\bin"
-cuda_bin = os.getenv("CUDA_PATH_BIN", default_cuda_path)
-if os.path.exists(cuda_bin):
+
+cuda_bin = os.getenv("CUDA_PATH_BIN", "")
+
+if cuda_bin and os.path.exists(cuda_bin):
     os.environ["PATH"] = cuda_bin + os.pathsep + os.environ["PATH"]
 
     if sys.platform == "win32":
         add_dll = getattr(os, "add_dll_directory", None)
         if add_dll:
             try:
-                add_dll(cuda_bin)  # Use 'cuda_bin' here
+                add_dll(cuda_bin)
             except Exception:
                 pass
+
 warnings.filterwarnings("ignore")
+from insightface.app import FaceAnalysis
 
 
+# --- WebSocket Client ---
 class AsyncWebSocketClient:
     def __init__(self, uri: str):
         self.uri = uri
         self.loop = asyncio.new_event_loop()
-        # Ensure the queue has a type annotation
         self.queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=1)
         self.thread = threading.Thread(target=self._start_loop, daemon=True)
         self.thread.start()
 
-    def _start_loop(self) -> None:  # Added -> None
+    def _start_loop(self) -> None:
         asyncio.set_event_loop(self.loop)
         self.loop.run_until_complete(self._main_loop())
 
-    async def _main_loop(self) -> None:  # Added -> None
+    async def _main_loop(self) -> None:
         while True:
             try:
                 async with websockets.connect(self.uri) as websocket:
@@ -59,20 +63,19 @@ class AsyncWebSocketClient:
                     while True:
                         frame_bytes = await self.queue.get()
                         await websocket.send(frame_bytes)
-            except Exception:
+            except Exception:  # FIX: No bare except
                 await asyncio.sleep(2)
 
-    def send_frame(self, frame_bytes: bytes) -> None:  # Added -> None
+    def send_frame(self, frame_bytes: bytes) -> None:
         if self.loop.is_running():
             if self.queue.full():
                 try:
                     self.queue.get_nowait()
-                except Exception:
+                except Exception:  # FIX: No bare except
                     pass
             self.loop.call_soon_threadsafe(self.queue.put_nowait, frame_bytes)
 
 
-# --- AI Setup ---
 print("[-] Loading AI Models...")
 app = FaceAnalysis(
     name="buffalo_s", providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
@@ -81,9 +84,10 @@ app.prepare(ctx_id=0, det_size=(640, 640))
 print(" AI Ready.")
 
 ws_client = AsyncWebSocketClient(WS_URL)
+
 latest_frame = None
-detected_faces: list = []
-recognition_results: dict = {}
+detected_faces: list = []  # FIX: Explicit type hint
+recognition_results: dict = {}  # FIX: Explicit type hint
 results_lock = threading.Lock()
 state_lock = threading.Lock()
 last_api_call = 0
@@ -198,6 +202,7 @@ def start_camera():
 
     while True:
         ret, frame = cap.read()
+        # FIX: Formatted to 2 lines
         if not ret:
             break
 
@@ -229,12 +234,13 @@ def start_camera():
                 (0, 0, 255),
                 2,
             )
+
         for face in faces_to_draw:
             bbox = face.bbox.astype(int)
             center_x = (bbox[0] + bbox[2]) // 2
             center_y = (bbox[1] + bbox[3]) // 2
             face_key = f"{center_x // 50}_{center_y // 50}"
-            # width = bbox[2] - bbox[0]
+            # FIX: Removed unused 'width' variable here
 
             name, color = "Scanning...", (0, 255, 255)
 

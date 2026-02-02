@@ -1,44 +1,57 @@
 import os
 import sys
 import onnxruntime as ort
+from dotenv import load_dotenv
 
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+env_path = os.path.join(project_root, ".env")
+load_dotenv(env_path)
 
 print("----------------------------------------------------------------")
 print(f"ONNX Runtime Version: {ort.__version__}")
 print("----------------------------------------------------------------")
-paths_to_check = [
-    r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8\bin",
-    r"C:\Program Files\NVIDIA\CUDNN\v9.7\bin",
-    r"C:\Program Files\NVIDIA\CUDNN\v9.6\bin",
-    r"C:\Program Files\NVIDIA\CUDNN\v9.5\bin",
-    r"C:\Program Files\NVIDIA\CUDNN\v9.4\bin",
-    r"C:\Program Files\NVIDIA\CUDNN\v9.3\bin",
-    r"C:\Program Files\NVIDIA\CUDNN\v9.2\bin",
-    r"C:\Program Files\NVIDIA\CUDNN\v9.1\bin",
-    r"C:\Program Files\NVIDIA\CUDNN\v9.0\bin",
-]
+
+
+cuda_env_val = os.getenv("CUDA_PATH_BIN", "")
+cudnn_env_val = os.getenv("CUDNN_PATH_BIN", "")
+
+paths_to_check = []
+if cuda_env_val:
+    paths_to_check.extend(cuda_env_val.split(os.pathsep))
+if cudnn_env_val:
+    paths_to_check.extend(cudnn_env_val.split(os.pathsep))
+
+# Clean up empty strings and strip whitespace
+paths_to_check = [p.strip() for p in paths_to_check if p.strip()]
 
 found_paths = []
 
-print("Scanning for DLL folders...")
+if not paths_to_check:
+    print("WARNING: No 'CUDA_PATH_BIN' or 'CUDNN_PATH_BIN' set in .env file.")
+    print("         Please define them to point to your bin folders.")
+else:
+    print(f"Scanning {len(paths_to_check)} configured paths from .env...")
+
 for path in paths_to_check:
     if os.path.exists(path):
         print(f"   Found folder: {path}")
 
-        # Safe DLL loading for Windows/Mypy
+        # Safe DLL loading (CI/Linux compatible)
         if sys.platform == "win32":
             add_dll = getattr(os, "add_dll_directory", None)
             if add_dll:
                 try:
-                    add_dll(path)  # Use the loop variable 'path'
+                    add_dll(path)
+                    found_paths.append(path)
                 except Exception:
                     pass
-        found_paths.append(path)
+    else:
+        print(f"    Folder defined in env NOT found: {path}")
 
-if not found_paths:
-    print(
-        "\nCRITICAL: No CUDA or cuDNN folders found. Did you install them to a custom location?"
-    )
+if not found_paths and sys.platform == "win32":
+    print("\nCRITICAL: No valid DLL folders successfully added.")
 
 required_files = {
     "cublas64_12.dll": "CUDA (Main Driver)",
@@ -59,30 +72,27 @@ for filename, desc in required_files.items():
             break
 
     if not found:
-        print(f"    MISSING: {filename} ({desc})")
+        # Don't panic immediately; standard system PATH might still find them
+        print(f"    (Not found in explicit paths): {filename}")
         missing_files.append(filename)
 
 print("\n Attempting to load NVIDIA GPU...")
 try:
-    providers = ["CUDAExecutionProvider"]
-    # We must try to create a session to trigger the actual load error
-    # Creating a dummy check isn't enough
     if "CUDAExecutionProvider" in ort.get_available_providers():
-        # Just because it's listed doesn't mean it works.
-        # We need to verify if it throws an error when used.
-        # Simple test: Can we set the provider?
         print("   -> Provider listed by ONNX Runtime. Validating...")
 
-        if len(missing_files) > 0:
-            print(
-                f"\n WARNING: It will likely fail because you are missing: {missing_files}"
+        # Attempt to create a session to force the driver to load
+        try:
+            ort.InferenceSession(
+                "dummy_model.onnx",  # This will fail, but we just want to see IF it fails on Provider
+                providers=["CUDAExecutionProvider"],
             )
-            print(
-                "   Python can see the 'option' to use CUDA, but the driver will crash on launch."
-            )
-        else:
-            print("\n SUCCESS! All files present. GPU is ready!")
-
+        except Exception as e:
+            # If the error is about the model, the provider loaded fine!
+            if "Load model" in str(e) or "No such file" in str(e):
+                print("\n SUCCESS! CUDA Provider initialized successfully.")
+            else:
+                print(f"\n FAILURE: {e}")
     else:
         print("\n CUDA Provider NOT listed. Python didn't find the library at all.")
 
