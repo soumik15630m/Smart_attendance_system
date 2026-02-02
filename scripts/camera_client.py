@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 import threading
 import cv2
@@ -8,6 +7,7 @@ import requests
 import warnings
 import asyncio
 import websockets
+from insightface.app import FaceAnalysis
 
 SERVER_IP = os.getenv("SERVER_IP", "127.0.0.1")
 SERVER_PORT = os.getenv("SERVER_PORT", "8000")
@@ -26,11 +26,13 @@ default_cuda_path = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8\b
 cuda_bin = os.getenv("CUDA_PATH_BIN", default_cuda_path)
 if os.path.exists(cuda_bin):
     os.environ["PATH"] = cuda_bin + os.pathsep + os.environ["PATH"]
-    try: os.add_dll_directory(cuda_bin)
-    except: pass
+    try:
+        os.add_dll_directory(cuda_bin)
+    except Exception:  # Use Exception instead of a bare except
+        pass
 
 warnings.filterwarnings("ignore")
-from insightface.app import FaceAnalysis
+
 
 # ... [AsyncWebSocketClient Class remains the same] ...
 class AsyncWebSocketClient:
@@ -49,18 +51,20 @@ class AsyncWebSocketClient:
         while True:
             try:
                 async with websockets.connect(self.uri) as websocket:
-                    print(f"Connected to Stream Relay")
+                    print("Connected to Stream Relay")
                     while True:
                         frame_bytes = await self.queue.get()
                         await websocket.send(frame_bytes)
-            except:
+            except Exception:
                 await asyncio.sleep(2)
 
     def send_frame(self, frame_bytes):
         if self.loop.is_running():
             if self.queue.full():
-                try: self.queue.get_nowait()
-                except: pass
+                try:
+                    self.queue.get_nowait()
+                except Exception:
+                    pass
             self.loop.call_soon_threadsafe(self.queue.put_nowait, frame_bytes)
 
 # --- AI Setup ---
@@ -103,7 +107,7 @@ def verify_face_worker(embedding_list, face_key):
                     "color": color,
                     "expiry": time.time() + 5.0 # Cache for 5 seconds
                 }
-    except:
+    except Exception:
         pass
 
 def ai_worker():
@@ -181,7 +185,8 @@ def start_camera():
 
     while True:
         ret, frame = cap.read()
-        if not ret: break
+        if not ret:
+            break
 
         frame = cv2.flip(frame, 1)
 
@@ -200,7 +205,7 @@ def start_camera():
             center_x = (bbox[0] + bbox[2]) // 2
             center_y = (bbox[1] + bbox[3]) // 2
             face_key = f"{center_x//50}_{center_y//50}"
-            width = bbox[2] - bbox[0]
+            # width = bbox[2] - bbox[0]
 
             name, color = "Scanning...", (0, 255, 255)
 

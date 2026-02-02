@@ -6,6 +6,10 @@ from dotenv import load_dotenv
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from src.database import AsyncSessionLocal
+from src.models.attendance import Attendance
+
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 if os.path.basename(script_dir) == 'scripts':
     project_root = os.path.dirname(script_dir)
@@ -29,8 +33,6 @@ try:
 except ImportError:
     pass
 
-from src.database import AsyncSessionLocal
-from src.models.attendance import Attendance
 
 async def show_attendance():
     print("\n" + "="*95)

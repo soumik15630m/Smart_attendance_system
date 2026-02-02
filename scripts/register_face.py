@@ -1,7 +1,6 @@
 import os
 import cv2
 import requests
-import numpy as np
 import warnings
 from insightface.app import FaceAnalysis
 
@@ -15,8 +14,10 @@ cuda_bin = os.getenv("CUDA_PATH_BIN", default_cuda_path)
 if os.path.exists(cuda_bin):
     os.environ["PATH"] = cuda_bin + os.pathsep + os.environ["PATH"]
     if hasattr(os, "add_dll_directory"):
-        try: os.add_dll_directory(cuda_bin)
-        except: pass
+        try:
+            os.add_dll_directory(cuda_bin)
+        except Exception:  # Use Exception instead of a bare except
+            pass
 
 print("--------------------------------------------------")
 print("FACE REGISTRATION CLIENT")
@@ -50,7 +51,8 @@ def enroll():
 
     while True:
         ret, frame = cap.read()
-        if not ret: break
+        if not ret:
+            break
 
         frame = cv2.flip(frame, 1)
         display_frame = frame.copy()
