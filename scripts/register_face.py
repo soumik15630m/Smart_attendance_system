@@ -35,7 +35,9 @@ app.prepare(ctx_id=0, det_size=(640, 640))
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Register one face to the attendance API.")
+    parser = argparse.ArgumentParser(
+        description="Register one face to the attendance API."
+    )
     parser.add_argument("--name", type=str, help="Person name to register.")
     parser.add_argument("--employee-id", type=str, help="Employee ID to assign.")
     return parser.parse_args()

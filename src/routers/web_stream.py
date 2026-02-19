@@ -1,9 +1,9 @@
-from typing import List
 import ipaddress
-
-from src.config import settings
+from typing import List
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+from src.config import settings
 
 router = APIRouter(prefix="/ws", tags=["streaming"])
 

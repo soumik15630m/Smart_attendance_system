@@ -3,17 +3,17 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from alembic.config import Config
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from alembic import command  # type: ignore
-from alembic.config import Config
-
 from sqlalchemy import text
 
+from alembic import command  # type: ignore
 from src.config import settings
 from src.database import engine
+from src.redis_config import init_cache, shutdown_cache
 from src.routers import (
     attendance_router,
     health_router,
@@ -22,7 +22,6 @@ from src.routers import (
     web_stream,
 )
 
-from src.redis_config import init_cache, shutdown_cache
 WEBUI_DIR = Path(__file__).resolve().parent / "webui"
 
 
