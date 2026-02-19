@@ -6,19 +6,22 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     DEBUG: bool = True
 
-    # Database (Neon PostgreSQL)
-    # format: postgresql+asyncpg://user:password@host:port/dbname
+    # postgresql+asyncpg://user:pass@host:port/db
     DATABASE_URL: str = ""
 
-    # Redis (Upstash or Local)
-    # format: redis://host:port/0
+    # auto -> upstash -> redis (local auto-start)
+    CACHE_BACKEND: str = "auto"
     REDIS_URL: str = "redis://localhost:6379/0"
+    AUTO_START_LOCAL_REDIS: bool = True
+    LOCAL_REDIS_START_CMD: str = ""
+    LOCAL_REDIS_START_TIMEOUT_SECONDS: float = 12.0
+    PREFER_DOCKER_REDIS: bool = True
+    UPSTASH_REDIS_REST_URL: str = ""
+    UPSTASH_REDIS_REST_TOKEN: str = ""
 
-    # Security
     SECRET_KEY: str = "Hi Soumik here....."
 
-    # Face Recognition Thresholds
-    # 0.6 is strict, 0.4 is loose. 0.5 is a good start for InsightFace.
+    # 0.5 is a good default for InsightFace.
     SIMILARITY_THRESHOLD: float = 0.5
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

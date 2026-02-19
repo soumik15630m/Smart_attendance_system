@@ -26,10 +26,10 @@ class IdentifyRequest(BaseModel):
 async def identify_and_mark(
     request: IdentifyRequest,
     db: AsyncSession = Depends(get_db),
-    redis=Depends(get_redis),
+    cache=Depends(get_redis),
 ):
     rec_service = RecognitionService(db)
-    att_service = AttendanceService(db, redis)
+    att_service = AttendanceService(db, cache)
 
     person = await rec_service.find_nearest_match(request.embedding)
 

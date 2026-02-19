@@ -9,10 +9,10 @@ from sqlalchemy import text
 from alembic import command  # type: ignore
 from src.config import settings
 from src.database import engine
+from src.redis_config import init_cache, shutdown_cache
 from src.routers import attendance_router, health_router, persons_router, web_stream
 
 
-# Lifecycle Manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print(f"Server starting up... DB URL: {settings.DATABASE_URL.split('@')[-1]}")
@@ -35,10 +35,16 @@ async def lifespan(app: FastAPI):
         print("Database connection established.")
     except Exception as e:
         print(f"CRITICAL: Database connection failed! {e}")
+    try:
+        await init_cache()
+    except Exception as e:
+        print(f"CRITICAL: Cache initialization failed! {e}")
+        raise
 
     yield
 
     print("Server shutting down...")
+    await shutdown_cache()
     await engine.dispose()
 
 
@@ -52,7 +58,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Register Routers ---
 app.include_router(attendance_router)
 app.include_router(health_router)
 app.include_router(web_stream.router)
