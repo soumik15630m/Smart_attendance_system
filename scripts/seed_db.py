@@ -1,14 +1,15 @@
 import asyncio
-import sys
 import os
 import random
+import sys
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from sqlalchemy import select
+
 from src.database import AsyncSessionLocal
 from src.models.person import Person
-from sqlalchemy import select
 
 
 async def seed():

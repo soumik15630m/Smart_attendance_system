@@ -1,6 +1,8 @@
-from typing import Optional
 import datetime  # Import module to avoid name collision with the field 'date'
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 from .person import PersonRead
 
 

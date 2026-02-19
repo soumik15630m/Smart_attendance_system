@@ -1,14 +1,14 @@
 import asyncio
-import sys
-import os
 import logging
+import os
+import sys
+
 from dotenv import load_dotenv
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.database import AsyncSessionLocal
 from src.models.attendance import Attendance
-
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 if os.path.basename(script_dir) == "scripts":

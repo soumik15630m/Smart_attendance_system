@@ -1,8 +1,10 @@
 import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError  # Add this import
-from src.models.attendance import Attendance
+
 from redis.asyncio import Redis
+from sqlalchemy.exc import IntegrityError  # Add this import
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.models.attendance import Attendance
 
 
 class AttendanceService:

@@ -1,14 +1,15 @@
 import os
 from contextlib import asynccontextmanager
+
+from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from alembic.config import Config
-from alembic import command  # type: ignore
 
+from alembic import command  # type: ignore
 from src.config import settings
 from src.database import engine
-from src.routers import attendance_router, health_router, web_stream, persons_router
+from src.routers import attendance_router, health_router, persons_router, web_stream
 
 
 # Lifecycle Manager

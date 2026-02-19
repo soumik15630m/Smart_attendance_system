@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.exc import IntegrityError
+
 from src.database import get_db
 from src.models.person import Person
 from src.schemas.person import PersonCreate, PersonRead
 from src.services.recognition import RecognitionService
-
 
 router = APIRouter(prefix="/persons", tags=["persons"])
 

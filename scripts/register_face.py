@@ -1,7 +1,8 @@
 import os
+import warnings
+
 import cv2
 import requests
-import warnings
 from insightface.app import FaceAnalysis
 
 SERVER_IP = os.getenv("SERVER_IP", "127.0.0.1")

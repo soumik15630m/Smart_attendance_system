@@ -1,12 +1,13 @@
+import asyncio
 import os
 import sys
-import time
 import threading
+import time
+import warnings
+
 import cv2
 import numpy as np
 import requests
-import warnings
-import asyncio
 import websockets
 from dotenv import load_dotenv
 
@@ -41,8 +42,8 @@ if cuda_bin and os.path.exists(cuda_bin):
 
 warnings.filterwarnings("ignore")
 # noqa: E402 tells Ruff to ignore the import position check
-from insightface.app import FaceAnalysis  # noqa: E402
 import onnxruntime as ort  # noqa: E402
+from insightface.app import FaceAnalysis  # noqa: E402
 
 
 # --- Optimized Threaded Camera ---

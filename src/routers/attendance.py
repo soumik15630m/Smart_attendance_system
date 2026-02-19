@@ -1,17 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-from typing import List, Optional
 import datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.database import get_db
+from src.models.attendance import Attendance
 from src.redis_config import get_redis
+from src.schemas.attendance import AttendanceRead
 from src.services.attendance import AttendanceService
 from src.services.recognition import RecognitionService
-from src.models.attendance import Attendance
-from src.schemas.attendance import AttendanceRead
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 

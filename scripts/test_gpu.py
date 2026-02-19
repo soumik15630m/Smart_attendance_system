@@ -1,8 +1,8 @@
 import os
 import sys
+
 import onnxruntime as ort
 from dotenv import load_dotenv
-
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(script_dir)

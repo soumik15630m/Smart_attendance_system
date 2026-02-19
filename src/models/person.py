@@ -1,7 +1,8 @@
 from typing import List, Optional
-from sqlalchemy import String, Boolean, Index
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from pgvector.sqlalchemy import Vector
+from sqlalchemy import Boolean, Index, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin
 

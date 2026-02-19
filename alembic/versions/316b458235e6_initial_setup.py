@@ -8,9 +8,11 @@ Create Date: 2026-02-01 23:32:04.459693
 
 from typing import Sequence, Union
 
-from alembic import op  # type: ignore
-import sqlalchemy as sa
 import pgvector  # Ensure pgvector is available in migrations
+import sqlalchemy as sa
+
+from alembic import op  # type: ignore
+
 # from pgvector.sqlalchemy import Vector
 
 
