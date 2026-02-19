@@ -168,6 +168,12 @@ API endpoint:
 http://localhost:8000
 ```
 
+Web dashboard (local machine only):
+
+```
+http://127.0.0.1:8000/ui
+```
+
 2. **Register a User**
 
 Run on a machine with a webcam:

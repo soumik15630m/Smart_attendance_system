@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge Attendance Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/ui/static/styles.css">
+</head>
+<body>
+    <div class="background-layer">
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="mesh"></div>
+    </div>
+
+    <main class="layout">
+        <header class="hero">
+            <div class="hero-copy">
+                <p class="eyebrow">Edge Computing Console</p>
+                <h1>Attendance Studio</h1>
+                <p>
+                    Run onboarding scripts, inspect logs, and monitor live attendance
+                    from this machine only.
+                </p>
+            </div>
+            <div class="hero-stats">
+                <article>
+                    <h2>Host</h2>
+                    <p id="overviewHost">-</p>
+                </article>
+                <article>
+                    <h2>Python</h2>
+                    <p id="overviewPython">-</p>
+                </article>
+                <article>
+                    <h2>DB</h2>
+                    <p id="overviewDb">-</p>
+                </article>
+                <article>
+                    <h2>Running</h2>
+                    <p id="overviewRunning">0</p>
+                </article>
+            </div>
+        </header>
+
+        <section class="panel panel-onboarding">
+            <div class="panel-head">
+                <h2>Onboarding Progress</h2>
+                <span id="onboardingBadge" class="chip">Local Mode</span>
+            </div>
+            <div id="onboardingList" class="onboarding-list"></div>
+        </section>
+
+        <section class="panel panel-ops">
+            <div class="panel-head">
+                <h2>Script Operations</h2>
+            </div>
+            <div id="scriptGrid" class="script-grid"></div>
+        </section>
+
+        <section class="panel panel-logs">
+            <div class="panel-head">
+                <h2 id="logTitle">Logs</h2>
+                <button id="clearLogSelection" class="ghost-btn" type="button">Clear Selection</button>
+            </div>
+            <pre id="logOutput" class="log-output">Select a script to view logs.</pre>
+        </section>
+
+        <section class="panel panel-stream">
+            <div class="panel-head">
+                <h2>Live Edge Camera Stream</h2>
+                <span id="streamStatus" class="chip warning">Connecting...</span>
+            </div>
+            <div class="stream-view">
+                <div id="streamPlaceholder" class="stream-placeholder">No frames yet</div>
+                <img id="streamFrame" alt="Live camera stream">
+            </div>
+        </section>
+
+        <section class="panel panel-attendance">
+            <div class="panel-head">
+                <h2>Recent Attendance</h2>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Employee ID</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Method</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceRows">
+                        <tr>
+                            <td colspan="5">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <dialog id="enrollDialog" class="enroll-dialog">
+        <form id="enrollForm" method="dialog">
+            <h3>Register Face</h3>
+            <p>Provide identity details before launching webcam enrollment.</p>
+            <label for="enrollName">Person Name</label>
+            <input id="enrollName" name="name" type="text" required maxlength="100">
+            <label for="enrollEmployeeId">Employee ID</label>
+            <input id="enrollEmployeeId" name="employee_id" type="text" maxlength="60">
+            <div class="dialog-actions">
+                <button type="submit" class="primary-btn">Launch</button>
+                <button id="cancelEnroll" type="button" class="ghost-btn">Cancel</button>
+            </div>
+        </form>
+    </dialog>
+
+    <script defer src="/ui/static/app.js"></script>
+</body>
+</html>

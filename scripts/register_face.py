@@ -1,3 +1,4 @@
+import argparse
 import os
 import warnings
 
@@ -33,13 +34,33 @@ app = FaceAnalysis(
 app.prepare(ctx_id=0, det_size=(640, 640))
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Register one face to the attendance API.")
+    parser.add_argument("--name", type=str, help="Person name to register.")
+    parser.add_argument("--employee-id", type=str, help="Employee ID to assign.")
+    return parser.parse_args()
+
+
+def enroll(name_override: str | None = None, employee_id_override: str | None = None):
+    # Gather User Info
+    if name_override:
+        name = name_override.strip()
+        print(f"Using provided name: {name}")
+    else:
+        name = input("Enter Person Name: ").strip()
+
 def enroll():
     name = input("Enter Person Name: ").strip()
     if not name:
         print("Name cannot be empty.")
         return
 
-    emp_id = input("Enter Employee ID: ").strip()
+    if employee_id_override is not None:
+        emp_id = employee_id_override.strip()
+        if emp_id:
+            print(f"Using provided employee ID: {emp_id}")
+    else:
+        emp_id = input("Enter Employee ID: ").strip()
 
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
@@ -119,4 +140,5 @@ def enroll():
 
 
 if __name__ == "__main__":
-    enroll()
+    cli_args = parse_args()
+    enroll(name_override=cli_args.name, employee_id_override=cli_args.employee_id)
