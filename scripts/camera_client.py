@@ -18,9 +18,9 @@ SERVER_PORT = os.getenv("SERVER_PORT", "8000")
 CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", 0))
 
 # Settings for V1 Quality Control
-MIN_BRIGHTNESS = 60       # 0-255 (Below this = "Too Dark")
-MIN_FACE_WIDTH = 60       # Pixels (Below this = "Too Far")
-MIN_DET_SCORE = 0.60      # 0-1.0 (Below this = "Not a clear face")
+MIN_BRIGHTNESS = 60  # 0-255 (Below this = "Too Dark")
+MIN_FACE_WIDTH = 60  # Pixels (Below this = "Too Far")
+MIN_DET_SCORE = 0.60  # 0-1.0 (Below this = "Not a clear face")
 
 API_URL = f"http://{SERVER_IP}:{SERVER_PORT}/attendance/identify"
 WS_URL = f"ws://{SERVER_IP}:{SERVER_PORT}/ws/video-input"
@@ -31,7 +31,7 @@ cuda_bin = os.getenv("CUDA_PATH_BIN", "")
 if cuda_bin and os.path.exists(cuda_bin):
     os.environ["PATH"] = cuda_bin + os.pathsep + os.environ["PATH"]
 
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         add_dll = getattr(os, "add_dll_directory", None)
         if add_dll:
             try:
@@ -44,12 +44,14 @@ warnings.filterwarnings("ignore")
 from insightface.app import FaceAnalysis  # noqa: E402
 import onnxruntime as ort  # noqa: E402
 
+
 # --- Optimized Threaded Camera ---
 class ThreadedCamera:
     """
     Reads camera frames in a separate thread to prevent I/O blocking
     the main UI loop. Critical for smooth performance.
     """
+
     def __init__(self, src=0):
         self.capture = cv2.VideoCapture(src)
         self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
@@ -89,6 +91,7 @@ class ThreadedCamera:
         self.stopped = True
         self.capture.release()
 
+
 # --- WebSocket Client ---
 class AsyncWebSocketClient:
     def __init__(self, uri: str):
@@ -122,20 +125,21 @@ class AsyncWebSocketClient:
                     pass
             self.loop.call_soon_threadsafe(self.queue.put_nowait, frame_bytes)
 
+
 # --- AI Setup (Auto-Switching) ---
 print("[-] Loading AI Models...")
 
 # Default Settings (CPU Safe)
-provider_list = ['CPUExecutionProvider']
-ctx_id = -1           # -1 = CPU
-det_size = (320, 320) # Low res for CPU speed
+provider_list = ["CPUExecutionProvider"]
+ctx_id = -1  # -1 = CPU
+det_size = (320, 320)  # Low res for CPU speed
 mode_name = "CPU OPTIMIZED"
 
 try:
     available_providers = ort.get_available_providers()
-    if 'CUDAExecutionProvider' in available_providers:
+    if "CUDAExecutionProvider" in available_providers:
         print("    CUDA Detected! Attempting to initialize GPU mode...")
-        provider_list = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+        provider_list = ["CUDAExecutionProvider", "CPUExecutionProvider"]
         ctx_id = 0
         det_size = (640, 640)
         mode_name = "GPU PURE PRECISION"
@@ -147,7 +151,7 @@ except Exception as e:
 
 print(f"[-] Mode: {mode_name} | Resolution: {det_size}")
 
-app = FaceAnalysis(name='buffalo_s', providers=provider_list)
+app = FaceAnalysis(name="buffalo_s", providers=provider_list)
 app.prepare(ctx_id=ctx_id, det_size=det_size)
 print(" AI Ready.")
 
@@ -162,9 +166,11 @@ state_lock = threading.Lock()
 last_api_call = 0
 running = True
 
+
 def get_brightness(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     return np.mean(gray)
+
 
 def verify_face_worker(embedding_list, face_key):
     global recognition_results
@@ -184,10 +190,11 @@ def verify_face_worker(embedding_list, face_key):
                 recognition_results[face_key] = {
                     "name": name,
                     "color": color,
-                    "expiry": time.time() + 5.0
+                    "expiry": time.time() + 5.0,
                 }
     except Exception:
         pass
+
 
 def ai_worker():
     global detected_faces, last_api_call
@@ -229,20 +236,24 @@ def ai_worker():
 
             center_x = (bbox[0] + bbox[2]) // 2
             center_y = (bbox[1] + bbox[3]) // 2
-            face_key = f"{center_x//50}_{center_y//50}"
+            face_key = f"{center_x // 50}_{center_y // 50}"
 
             with results_lock:
-                if face_key not in recognition_results or current_time > recognition_results[face_key]['expiry']:
+                if (
+                    face_key not in recognition_results
+                    or current_time > recognition_results[face_key]["expiry"]
+                ):
                     if (current_time - last_api_call) > 1.0:
                         last_api_call = current_time
                         threading.Thread(
                             target=verify_face_worker,
                             args=(face.embedding.tolist(), face_key),
-                            daemon=True
+                            daemon=True,
                         ).start()
 
         with state_lock:
             detected_faces = valid_faces
+
 
 def start_camera():
     global latest_frame, running
@@ -261,7 +272,7 @@ def start_camera():
         ret, frame = cam.read()
 
         if not ret or frame is None:
-            time.sleep(0.01) # Wait slightly if camera hasn't initialized
+            time.sleep(0.01)  # Wait slightly if camera hasn't initialized
             continue
 
         frame = cv2.flip(frame, 1)
@@ -276,36 +287,53 @@ def start_camera():
 
         brightness = get_brightness(vis_frame)
         if brightness < MIN_BRIGHTNESS:
-            cv2.putText(vis_frame, "TOO DARK", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 3)
+            cv2.putText(
+                vis_frame,
+                "TOO DARK",
+                (50, 100),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                2,
+                (0, 0, 255),
+                3,
+            )
 
         for face in faces_to_draw:
             bbox = face.bbox.astype(int)
             center_x = (bbox[0] + bbox[2]) // 2
             center_y = (bbox[1] + bbox[3]) // 2
-            face_key = f"{center_x//50}_{center_y//50}"
+            face_key = f"{center_x // 50}_{center_y // 50}"
 
             name, color = "Scanning...", (0, 255, 255)
 
             with results_lock:
                 if face_key in recognition_results:
                     res = recognition_results[face_key]
-                    if time.time() < res['expiry']:
-                        name, color = res['name'], res['color']
+                    if time.time() < res["expiry"]:
+                        name, color = res["name"], res["color"]
 
             cv2.rectangle(vis_frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
-            cv2.putText(vis_frame, name, (bbox[0], bbox[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            cv2.putText(
+                vis_frame,
+                name,
+                (bbox[0], bbox[1] - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                color,
+                2,
+            )
 
         # Web Stream (Optional - only send if needed to save bandwidth)
-        _, buffer = cv2.imencode('.jpg', vis_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        _, buffer = cv2.imencode(".jpg", vis_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
         ws_client.send_frame(buffer.tobytes())
 
-        cv2.imshow('Face Attendance Client (V2 Multi-Threaded)', vis_frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        cv2.imshow("Face Attendance Client (V2 Multi-Threaded)", vis_frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             running = False
             cam.stop()
             break
 
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     start_camera()
