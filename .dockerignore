@@ -1,27 +1,27 @@
-# Ignore Git history
+# Git
 .git/
 .gitignore
 
-# Ignore Python Cache
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Ignore Virtual Envs (CRITICAL)
+# Virtual envs
 venv/
 .venv/
 env/
 
-# Ignore Environment Secrets
+# Secrets
 .env
 .env.local
 
-# Ignore heavy media or local DBs
+# Large/local artifacts
 *.mp4
 *.avi
 *.jpg
 .neon_local/
 
-# Ignore local IDE settings
+# IDE files
 .vscode/
 .idea/

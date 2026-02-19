@@ -13,12 +13,8 @@ router = APIRouter(prefix="/persons", tags=["persons"])
 
 @router.post("/register", response_model=PersonRead)
 async def register_person(person_in: PersonCreate, db: AsyncSession = Depends(get_db)):
-    """
-    Registers a new person with their face embedding.
-    prevents duplicate faces!
-    """
+    """Register person and block duplicate IDs or embeddings."""
 
-    # 1. Check if Employee ID already exists (Existing Logic)
     if person_in.employee_id:
         query = select(Person).where(Person.employee_id == person_in.employee_id)
         result = await db.execute(query)
@@ -28,7 +24,6 @@ async def register_person(person_in: PersonCreate, db: AsyncSession = Depends(ge
                 detail=f"Employee ID '{person_in.employee_id}' already registered.",
             )
 
-    # 2. Check if Face already exists (NEW LOGIC)
     rec_service = RecognitionService(db)
     existing_person = await rec_service.find_nearest_match(person_in.embedding)
 
@@ -38,7 +33,6 @@ async def register_person(person_in: PersonCreate, db: AsyncSession = Depends(ge
             detail=f"Face already registered! Matched with: {existing_person.name} ({existing_person.employee_id})",
         )
 
-    # 3. Create the Person model instance
     new_person = Person(
         name=person_in.name,
         employee_id=person_in.employee_id,
@@ -47,7 +41,6 @@ async def register_person(person_in: PersonCreate, db: AsyncSession = Depends(ge
         is_active=person_in.is_active,
     )
 
-    # 4. Save to Database
     db.add(new_person)
     try:
         await db.commit()

@@ -11,22 +11,19 @@ import requests
 import websockets
 from dotenv import load_dotenv
 
-# 1. Load Environment Variables
 load_dotenv()
 
 SERVER_IP = os.getenv("SERVER_IP", "127.0.0.1")
 SERVER_PORT = os.getenv("SERVER_PORT", "8000")
 CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", 0))
 
-# Settings for V1 Quality Control
-MIN_BRIGHTNESS = 60  # 0-255 (Below this = "Too Dark")
-MIN_FACE_WIDTH = 60  # Pixels (Below this = "Too Far")
-MIN_DET_SCORE = 0.60  # 0-1.0 (Below this = "Not a clear face")
+MIN_BRIGHTNESS = 60
+MIN_FACE_WIDTH = 60
+MIN_DET_SCORE = 0.60
 
 API_URL = f"http://{SERVER_IP}:{SERVER_PORT}/attendance/identify"
 WS_URL = f"ws://{SERVER_IP}:{SERVER_PORT}/ws/video-input"
 
-# --- CUDA Setup (Platform Safe) ---
 cuda_bin = os.getenv("CUDA_PATH_BIN", "")
 
 if cuda_bin and os.path.exists(cuda_bin):
@@ -41,23 +38,17 @@ if cuda_bin and os.path.exists(cuda_bin):
                 pass
 
 warnings.filterwarnings("ignore")
-# noqa: E402 tells Ruff to ignore the import position check
 import onnxruntime as ort  # noqa: E402
 from insightface.app import FaceAnalysis  # noqa: E402
 
 
-# --- Optimized Threaded Camera ---
 class ThreadedCamera:
-    """
-    Reads camera frames in a separate thread to prevent I/O blocking
-    the main UI loop. Critical for smooth performance.
-    """
+    """Read frames on a background thread."""
 
     def __init__(self, src=0):
         self.capture = cv2.VideoCapture(src)
         self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-        # Buffer size 1 ensuring we always get the *latest* frame, not an old buffered one
         self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
         self.lock = threading.Lock()
@@ -93,7 +84,6 @@ class ThreadedCamera:
         self.capture.release()
 
 
-# --- WebSocket Client ---
 class AsyncWebSocketClient:
     def __init__(self, uri: str):
         self.uri = uri
@@ -127,13 +117,11 @@ class AsyncWebSocketClient:
             self.loop.call_soon_threadsafe(self.queue.put_nowait, frame_bytes)
 
 
-# --- AI Setup (Auto-Switching) ---
 print("[-] Loading AI Models...")
 
-# Default Settings (CPU Safe)
 provider_list = ["CPUExecutionProvider"]
-ctx_id = -1  # -1 = CPU
-det_size = (320, 320)  # Low res for CPU speed
+ctx_id = -1
+det_size = (320, 320)
 mode_name = "CPU OPTIMIZED"
 
 try:
@@ -158,7 +146,6 @@ print(" AI Ready.")
 
 ws_client = AsyncWebSocketClient(WS_URL)
 
-# Global State
 latest_frame = None
 detected_faces: list = []
 recognition_results: dict = {}
@@ -217,7 +204,6 @@ def ai_worker():
             time.sleep(0.1)
             continue
 
-        # AI Inference (Heavy Task)
         img_rgb = cv2.cvtColor(img_copy, cv2.COLOR_BGR2RGB)
         faces = app.get(img_rgb)
         current_time = time.time()
@@ -259,29 +245,24 @@ def ai_worker():
 def start_camera():
     global latest_frame, running
 
-    # Use Threaded Camera instead of blocking cv2.VideoCapture
     print("[-] Starting Threaded Camera...")
     cam = ThreadedCamera(CAMERA_INDEX).start()
 
-    # Start AI Thread
     threading.Thread(target=ai_worker, daemon=True).start()
 
     print("[-] System Online. Press 'q' to exit.")
 
     while True:
-        # Non-blocking read (reads latest available frame from thread)
         ret, frame = cam.read()
 
         if not ret or frame is None:
-            time.sleep(0.01)  # Wait slightly if camera hasn't initialized
+            time.sleep(0.01)
             continue
 
         frame = cv2.flip(frame, 1)
 
-        # Update global frame for AI worker
         with state_lock:
             latest_frame = frame
-            # Quick copy for UI to minimize lock time
             faces_to_draw = list(detected_faces)
 
         vis_frame = frame.copy()
@@ -323,7 +304,6 @@ def start_camera():
                 2,
             )
 
-        # Web Stream (Optional - only send if needed to save bandwidth)
         _, buffer = cv2.imencode(".jpg", vis_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
         ws_client.send_frame(buffer.tobytes())
 

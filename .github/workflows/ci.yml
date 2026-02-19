@@ -43,7 +43,6 @@ jobs:
 
       - name: Install Quality Tools
         run: |
-          # Added vulture for dead code detection
           pip install ruff bandit mypy pip-audit vulture types-requests types-redis
           ruff --version
           bandit --version

@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # The API Application
   app:
     build: .
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
@@ -16,7 +15,6 @@ services:
     depends_on:
       - redis
 
-  # Redis for Cooldowns
   redis:
     image: redis:alpine
     ports:

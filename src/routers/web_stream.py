@@ -41,8 +41,6 @@ async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # We mostly wait for data to broadcast,
-            # but this keeps the connection alive.
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -50,9 +48,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @router.websocket("/video-input")
 async def video_input_endpoint(websocket: WebSocket):
-    """
-    to process gpu frames by camera_client.py
-    """
+    """Receive frames from camera client and fan out to viewers."""
     await websocket.accept()
     try:
         while True:

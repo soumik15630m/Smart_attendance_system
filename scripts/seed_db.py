@@ -3,7 +3,6 @@ import os
 import random
 import sys
 
-# Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import select
@@ -14,7 +13,6 @@ from src.models.person import Person
 
 async def seed():
     async with AsyncSessionLocal() as session:
-        # Check if DB is already seeded
         result = await session.execute(select(Person).limit(1))
         if result.scalars().first():
             print("Database already contains data. Skipping seed.")
@@ -22,7 +20,6 @@ async def seed():
 
         print("Seeding database with test users...")
 
-        # Create a dummy user with a random embedding
         fake_embedding = [random.random() for _ in range(512)]
 
         test_user = Person(
