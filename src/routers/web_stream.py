@@ -1,5 +1,8 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import List
+import ipaddress
+
+from src.config import settings
 
 
 router = APIRouter(prefix="/ws", tags=["streaming"])
@@ -36,8 +39,25 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+def _is_loopback_client(websocket: WebSocket) -> bool:
+    client = websocket.client
+    if not client:
+        return False
+    host = client.host
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
 @router.websocket("/stream")
 async def websocket_endpoint(websocket: WebSocket):
+    if settings.LOCAL_ONLY and not _is_loopback_client(websocket):
+        await websocket.close(code=1008)
+        return
+
     await manager.connect(websocket)
     try:
         while True:
@@ -53,6 +73,10 @@ async def video_input_endpoint(websocket: WebSocket):
     """
     to process gpu frames by camera_client.py
     """
+    if settings.LOCAL_ONLY and not _is_loopback_client(websocket):
+        await websocket.close(code=1008)
+        return
+
     await websocket.accept()
     try:
         while True:

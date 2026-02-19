@@ -5,6 +5,9 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Face Attendance System"
     VERSION: str = "1.0.0"
     DEBUG: bool = True
+    HOST: str = "127.0.0.1"
+    PORT: int = 8000
+    LOCAL_ONLY: bool = True
 
     # Database (Neon PostgreSQL)
     # format: postgresql+asyncpg://user:password@host:port/dbname
