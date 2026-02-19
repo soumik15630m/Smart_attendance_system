@@ -5,3 +5,4 @@ from .persons import router as persons_router
 
 # Huh!! for  wildcard imports
 __all__ = ["attendance_router", "health_router", "persons_router", "local_ui_router"]
+__all__ = ["attendance_router", "health_router", "persons_router"]

@@ -1,6 +1,6 @@
 import asyncio
-from logging.config import fileConfig
 import sys
+from logging.config import fileConfig
 from pathlib import Path
 
 from sqlalchemy import pool
@@ -9,36 +9,22 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context  # type: ignore
 
-# --- CUSTOM IMPORTS START ---
-# Add the project root to the python path so imports work
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from src.config import settings
 from src.models import Base
 
 config = context.config
-
-section = config.get_section(config.config_ini_section)
-connectable = async_engine_from_config(
-    section if section is not None else {},
-    prefix="sqlalchemy.",
-    poolclass=pool.NullPool,
-)
-# Overwrite the DB URL in alembic.ini
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Set the MetaData so autogenerate can "see" models
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-    This configures the context with just a URL
-    and not an Engine.
-    """
+    """Run migrations in offline mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -59,7 +45,6 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_migrations_online() -> None:
-    # Get the section and ensure it is a dictionary
     section = config.get_section(config.config_ini_section)
 
     connectable = async_engine_from_config(

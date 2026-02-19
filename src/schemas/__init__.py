@@ -1,5 +1,5 @@
-from .person import PersonBase, PersonCreate, PersonRead
 from .attendance import AttendanceBase, AttendanceCreate, AttendanceRead
+from .person import PersonBase, PersonCreate, PersonRead
 
 __all__ = [
     "PersonBase",

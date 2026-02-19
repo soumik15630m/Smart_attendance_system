@@ -1,25 +1,37 @@
 import datetime
+
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError  # Add this import
+
 from src.models.attendance import Attendance
-from redis.asyncio import Redis
+from src.redis_config import CacheClient
 
 
 class AttendanceService:
-    def __init__(self, db: AsyncSession, redis: Redis):
+    def __init__(self, db: AsyncSession, cache: CacheClient):
         self.db = db
-        self.redis = redis
+        self.cache = cache
+
+    async def _is_recently_marked(self, key: str) -> bool:
+        try:
+            return bool(await self.cache.get(key))
+        except Exception:
+            return False
+
+    async def _mark_recently_marked(self, key: str) -> None:
+        try:
+            await self.cache.setex(key, 43200, "marked")
+        except Exception:
+            return
 
     async def mark_attendance(self, person_id: int):
         today = datetime.date.today()
-        redis_key = f"attendance:{person_id}:{today}"
+        cache_key = f"attendance:{person_id}:{today}"
 
-        # Quick check in Redis (The fast path)
-        if await self.redis.get(redis_key):
+        if await self._is_recently_marked(cache_key):
             return None, False
 
         try:
-            # Attempt to save to Postgres
             new_record = Attendance(
                 person_id=person_id,
                 date=today,
@@ -30,13 +42,10 @@ class AttendanceService:
             await self.db.commit()
             await self.db.refresh(new_record)
 
-            # Success! Set Redis cache for 12 hours
-            await self.redis.setex(redis_key, 43200, "marked")
+            await self._mark_recently_marked(cache_key)
             return new_record, True
 
         except IntegrityError:
-            # Handle the case where the DB already has a record (Safety fallback)
             await self.db.rollback()
-            # Backfill Redis if it was somehow cleared
-            await self.redis.setex(redis_key, 43200, "marked")
+            await self._mark_recently_marked(cache_key)
             return None, False

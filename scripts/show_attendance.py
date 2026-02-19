@@ -1,14 +1,14 @@
 import asyncio
-import sys
-import os
 import logging
+import os
+import sys
+
 from dotenv import load_dotenv
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.database import AsyncSessionLocal
 from src.models.attendance import Attendance
-
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 if os.path.basename(script_dir) == "scripts":
@@ -21,7 +21,6 @@ env_path = os.path.join(project_root, ".env")
 if os.path.exists(env_path):
     load_dotenv(env_path)
 
-# Disable the root logger and specific SQLAlchemy loggers
 logging.basicConfig(level=logging.CRITICAL)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)

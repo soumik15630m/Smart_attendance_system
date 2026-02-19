@@ -9,8 +9,13 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from alembic import command  # type: ignore
 from alembic.config import Config
+
+from alembic.config import Config
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from alembic import command  # type: ignore
 from src.config import settings
 from src.database import engine
 from src.routers import (
@@ -22,9 +27,10 @@ from src.routers import (
 )
 
 WEBUI_DIR = Path(__file__).resolve().parent / "webui"
+from src.redis_config import init_cache, shutdown_cache
+from src.routers import attendance_router, health_router, persons_router, web_stream
 
 
-# Lifecycle Manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print(f"Server starting up... DB URL: {settings.DATABASE_URL.split('@')[-1]}")
@@ -47,10 +53,16 @@ async def lifespan(app: FastAPI):
         print("Database connection established.")
     except Exception as e:
         print(f"CRITICAL: Database connection failed! {e}")
+    try:
+        await init_cache()
+    except Exception as e:
+        print(f"CRITICAL: Cache initialization failed! {e}")
+        raise
 
     yield
 
     print("Server shutting down...")
+    await shutdown_cache()
     await engine.dispose()
 
 

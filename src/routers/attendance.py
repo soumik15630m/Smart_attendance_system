@@ -1,17 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-from typing import List, Optional
 import datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.database import get_db
+from src.models.attendance import Attendance
 from src.redis_config import get_redis
+from src.schemas.attendance import AttendanceRead
 from src.services.attendance import AttendanceService
 from src.services.recognition import RecognitionService
-from src.models.attendance import Attendance
-from src.schemas.attendance import AttendanceRead
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 
@@ -25,10 +26,10 @@ class IdentifyRequest(BaseModel):
 async def identify_and_mark(
     request: IdentifyRequest,
     db: AsyncSession = Depends(get_db),
-    redis=Depends(get_redis),
+    cache=Depends(get_redis),
 ):
     rec_service = RecognitionService(db)
-    att_service = AttendanceService(db, redis)
+    att_service = AttendanceService(db, cache)
 
     person = await rec_service.find_nearest_match(request.embedding)
 

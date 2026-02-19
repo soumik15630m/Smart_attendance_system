@@ -42,7 +42,7 @@ This system shifts **AI inference to the edge** and uses **HNSW (Hierarchical Na
   PostgreSQL + pgvector for high-performance cosine similarity matching.
 
 - **Anti-Spam Cooldowns**  
-  Redis-backed cache prevents duplicate attendance entries within a configurable window (default: 12 hours).
+  Cache-backed cooldown prevents duplicate attendance entries (default: 12 hours) using Upstash REST or Redis with automatic local startup.
 
 - **Real-time Monitoring**  
   WebSocket relay broadcasts live video feeds to a web dashboard without server-side processing.
@@ -74,7 +74,7 @@ The system follows a **Split-Compute** pattern.
 ### Server (Core)
 
 - FastAPI receives the embedding
-- Redis checks cooldown (fast fail)
+- Cache checks cooldown (Upstash REST / Redis with local auto-start)
 - PostgreSQL performs vector similarity search
 - Attendance is logged if confidence exceeds threshold
 
@@ -87,7 +87,7 @@ smart-attendance-system/
 ├── src/                  # Core server implementation
 │   ├── models/           # SQLAlchemy database models
 │   ├── routers/          # API endpoints (attendance, persons, stream)
-│   ├── services/         # Business logic (recognition, Redis cache)
+│   ├── services/         # Business logic (recognition, attendance cooldown)
 │   └── main.py           # Application entry point
 ├── scripts/              # Client-side tools
 │   ├── camera_client.py  # Edge AI camera runner
@@ -161,7 +161,7 @@ python scripts/test_gpu.py
 
 1. **Start the Server**
 
-Ensure Docker is running and the database is healthy.
+Ensure Docker is running and the database is healthy. If Upstash is not configured, the app will auto-start local Redis in `CACHE_BACKEND=auto` mode.
 API endpoint:
 
 ```
@@ -230,7 +230,13 @@ Configuration is managed via the `.env` file.
 | Variable             | Description                       | Example / Default                      |
 | -------------------- | --------------------------------- | -------------------------------------- |
 | DATABASE_URL         | PostgreSQL connection string      | postgresql+asyncpg://user:pass@host/db |
-| REDIS_HOST           | Redis cache host                  | localhost / redis                      |
+| CACHE_BACKEND        | `auto`, `upstash_rest`, `redis`     | auto                                   |
+| REDIS_URL            | Redis connection URL              | redis://localhost:6379/0               |
+| AUTO_START_LOCAL_REDIS | Auto-start local Redis if needed | true                                  |
+| LOCAL_REDIS_START_CMD | Optional custom startup command   | redis-server --port 6379 ...           |
+| PREFER_DOCKER_REDIS | Try Docker Redis command before OS-native command | true                     |
+| UPSTASH_REDIS_REST_URL | Upstash REST endpoint           | https://<id>.upstash.io                |
+| UPSTASH_REDIS_REST_TOKEN | Upstash REST bearer token     | <token>                                |
 | SIMILARITY_THRESHOLD | Match strictness (0.0–1.0)        | 0.5                                    |
 | API_KEY              | Client authentication key         | my-secret-admin-key                    |
 | SERVER_IP            | Server address for client scripts | 127.0.0.1                              |

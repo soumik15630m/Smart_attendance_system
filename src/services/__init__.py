@@ -1,4 +1,4 @@
-from .recognition import RecognitionService
 from .attendance import AttendanceService
+from .recognition import RecognitionService
 
 __all__ = ["RecognitionService", "AttendanceService"]

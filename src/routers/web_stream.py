@@ -1,9 +1,9 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import List
 import ipaddress
 
 from src.config import settings
 
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 router = APIRouter(prefix="/ws", tags=["streaming"])
 
@@ -61,8 +61,6 @@ async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # We mostly wait for data to broadcast,
-            # but this keeps the connection alive.
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -77,6 +75,7 @@ async def video_input_endpoint(websocket: WebSocket):
         await websocket.close(code=1008)
         return
 
+    """Receive frames from camera client and fan out to viewers."""
     await websocket.accept()
     try:
         while True:

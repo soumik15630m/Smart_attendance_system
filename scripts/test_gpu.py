@@ -1,8 +1,8 @@
 import os
 import sys
+
 import onnxruntime as ort
 from dotenv import load_dotenv
-
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(script_dir)
@@ -23,7 +23,6 @@ if cuda_env_val:
 if cudnn_env_val:
     paths_to_check.extend(cudnn_env_val.split(os.pathsep))
 
-# Clean up empty strings and strip whitespace
 paths_to_check = [p.strip() for p in paths_to_check if p.strip()]
 
 found_paths: list[str] = []
@@ -38,7 +37,6 @@ for path in paths_to_check:
     if os.path.exists(path):
         print(f"   Found folder: {path}")
 
-        # Safe DLL loading (CI/Linux compatible)
         if sys.platform == "win32":
             add_dll = getattr(os, "add_dll_directory", None)
             if add_dll:
@@ -72,7 +70,6 @@ for filename, desc in required_files.items():
             break
 
     if not found:
-        # Don't panic immediately; standard system PATH might still find them
         print(f"    (Not found in explicit paths): {filename}")
         missing_files.append(filename)
 
@@ -81,14 +78,12 @@ try:
     if "CUDAExecutionProvider" in ort.get_available_providers():
         print("   -> Provider listed by ONNX Runtime. Validating...")
 
-        # Attempt to create a session to force the driver to load
         try:
             ort.InferenceSession(
-                "dummy_model.onnx",  # This will fail, but we just want to see IF it fails on Provider
+                "dummy_model.onnx",
                 providers=["CUDAExecutionProvider"],
             )
         except Exception as e:
-            # If the error is about the model, the provider loaded fine!
             if "Load model" in str(e) or "No such file" in str(e):
                 print("\n SUCCESS! CUDA Provider initialized successfully.")
             else:

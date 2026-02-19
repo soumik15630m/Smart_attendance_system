@@ -1,8 +1,9 @@
 import argparse
 import os
+import warnings
+
 import cv2
 import requests
-import warnings
 from insightface.app import FaceAnalysis
 
 SERVER_IP = os.getenv("SERVER_IP", "127.0.0.1")
@@ -17,7 +18,7 @@ if os.path.exists(cuda_bin):
     if hasattr(os, "add_dll_directory"):
         try:
             os.add_dll_directory(cuda_bin)
-        except Exception:  # Use Exception instead of a bare except
+        except Exception:
             pass
 
 print("--------------------------------------------------")
@@ -25,7 +26,6 @@ print("FACE REGISTRATION CLIENT")
 print(f"Target Server: {REG_URL}")
 print("--------------------------------------------------")
 
-# Suppress ONNX warnings
 warnings.filterwarnings("ignore")
 
 app = FaceAnalysis(
@@ -49,6 +49,8 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
     else:
         name = input("Enter Person Name: ").strip()
 
+def enroll():
+    name = input("Enter Person Name: ").strip()
     if not name:
         print("Name cannot be empty.")
         return
@@ -60,7 +62,6 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
     else:
         emp_id = input("Enter Employee ID: ").strip()
 
-    # Start Camera
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("Error: Could not open webcam.")
@@ -79,18 +80,18 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
         display_frame = frame.copy()
 
         faces = app.get(frame)
-        status_color = (0, 0, 255)  # Red (No Face)
+        status_color = (0, 0, 255)
         status_text = "No Face Detected"
 
         if len(faces) == 1:
-            status_color = (0, 255, 0)  # Green (Good)
+            status_color = (0, 255, 0)
             status_text = "Ready to Register (Press 's')"
             bbox = faces[0].bbox.astype(int)
             cv2.rectangle(
                 display_frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), status_color, 2
             )
         elif len(faces) > 1:
-            status_color = (0, 255, 255)  # Yellow (Too Many)
+            status_color = (0, 255, 255)
             status_text = "Too many faces! Only 1 allowed."
 
         cv2.putText(

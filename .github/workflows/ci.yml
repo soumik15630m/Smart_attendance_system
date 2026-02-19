@@ -1,6 +1,5 @@
 name: ci
 
-# Trigger on Push to Main or Pull Requests
 on:
   push:
     branches: [ "main" ]
@@ -11,10 +10,24 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # JOB 1: Code Quality Check
   quality:
     name: Lint & Format Check
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     strategy:
       matrix:
         python-version: ["3.10", "3.11"]
@@ -30,42 +43,42 @@ jobs:
 
       - name: Install Quality Tools
         run: |
-          # Added mypy and pip-audit
-          pip install ruff bandit mypy pip-audit types-requests types-redis
+          pip install ruff bandit mypy pip-audit vulture types-requests types-redis
           ruff --version
           bandit --version
 
-      - name: Install Dependencies for Mypy
-        # Mypy needs the actual packages installed to check their types
+      - name: Install Dependencies
         run: pip install -r requirements.txt
 
       - name: Run Linter (Ruff)
-        # Checks for syntax errors and undefined names
-        run: ruff check .
+        run: ruff check --extend-select I .
 
       - name: Check Formatting
-        # Fails if code is not formatted (you can run 'ruff format .' locally to fix)
         run: ruff format --check .
 
       - name: Run Type Checker (Mypy)
-        # Ignores missing imports for libraries like OpenCV/InsightFace that lack stubs
         run: mypy . --ignore-missing-imports
 
       - name: Run Security Check (Bandit)
-        # Checks for common security vulnerabilities
-        # -r: recursive scan of src directory
-        # -ll: only report medium and high severity issues
         run: bandit -r src/ -ll
 
       - name: Run Dependency Audit
-        # Scans requirements.txt for known vulnerabilities
         run: pip-audit -r requirements.txt
 
-  # JOB 2: Build Verification
+      - name: Detect Dead Code (Vulture)
+        run: vulture src/ --min-confidence 80
+
+      - name: Test Database Migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/test_db
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+
   build:
-    name: Build Docker Image
+    name: Build & Scan Docker Image
     runs-on: ubuntu-latest
-    needs: quality  # Only run if linting passes
+    needs: quality  
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -74,12 +87,20 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker Image
-        # This confirms that requirements.txt is valid and system libs (libgl1) are present.
-        # It does NOT push the image, just tests the build process.
         uses: docker/build-push-action@v5
         with:
           context: .
           push: false
           tags: smart-attendance:test
+          outputs: type=docker,dest=/tmp/myimage.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: /tmp/myimage.tar
+          format: 'table'
+          exit-code: '1'       
+          ignore-unfixed: true 
+          severity: 'CRITICAL,HIGH'
