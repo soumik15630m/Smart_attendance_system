@@ -10,12 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from alembic import command  # type: ignore
 from alembic.config import Config
 
-from alembic.config import Config
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from alembic import command  # type: ignore
 from src.config import settings
 from src.database import engine
 from src.routers import (
@@ -26,9 +22,8 @@ from src.routers import (
     web_stream,
 )
 
-WEBUI_DIR = Path(__file__).resolve().parent / "webui"
 from src.redis_config import init_cache, shutdown_cache
-from src.routers import attendance_router, health_router, persons_router, web_stream
+WEBUI_DIR = Path(__file__).resolve().parent / "webui"
 
 
 @asynccontextmanager

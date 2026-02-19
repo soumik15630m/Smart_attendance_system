@@ -49,8 +49,6 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
     else:
         name = input("Enter Person Name: ").strip()
 
-def enroll():
-    name = input("Enter Person Name: ").strip()
     if not name:
         print("Name cannot be empty.")
         return
