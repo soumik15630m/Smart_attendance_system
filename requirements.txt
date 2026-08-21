@@ -22,3 +22,9 @@ httpx
 pydantic-settings
 pgvector
 pydantic
+
+# Security pins (transitive deps with known CVEs)
+jaraco.context>=6.1.0   # CVE-2026-23949: path traversal via malicious tar archives
+msgpack>=1.2.1          # GHSA-6v7p-g79w-8964: OOB read/crash on Unpacker reuse
+setuptools>=78.1.1      # CVE-2025-47273: path traversal in PackageIndex
+wheel>=0.46.2           # CVE-2026-24049: arbitrary code execution via malicious wheel
