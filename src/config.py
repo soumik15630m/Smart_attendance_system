@@ -12,6 +12,15 @@ class Settings(BaseSettings):
     # postgresql+asyncpg://user:pass@host:port/db
     DATABASE_URL: str = ""
 
+    # Async connection pool sizing. Defaults match SQLAlchemy's own
+    # defaults (5 + 10 overflow); raise these if you see connections
+    # queuing under concurrent camera/attendance traffic. Some managed
+    # Postgres providers (pgbouncer, Neon, etc.) cap total connections
+    # lower than you'd expect, so check that before raising too far.
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_RECYCLE_SECONDS: int = 1800
+
     # auto -> upstash -> redis (local auto-start)
     CACHE_BACKEND: str = "auto"
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -36,6 +45,11 @@ class Settings(BaseSettings):
 
     # 0.5 is a good default for InsightFace.
     SIMILARITY_THRESHOLD: float = 0.5
+
+    # pgvector HNSW query-time recall knob. Higher = better recall, slightly
+    # higher latency. Default (40) is pgvector's own default; 80-120 is a
+    # reasonable range once the persons table grows past a few thousand rows.
+    HNSW_EF_SEARCH: int = 80
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

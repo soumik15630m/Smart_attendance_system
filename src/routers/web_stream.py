@@ -1,3 +1,4 @@
+import asyncio
 import ipaddress
 from typing import List
 
@@ -17,23 +18,41 @@ class ConnectionManager:
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def broadcast_video(self, frame_bytes: bytes):
-        """Send binary video frame to all browsers"""
-        for connection in self.active_connections:
-            try:
-                await connection.send_bytes(frame_bytes)
-            except Exception:
-                continue
+        """Send binary video frame to all browsers, in parallel.
+
+        A slow or dead viewer no longer blocks delivery to everyone else
+        behind it, and connections that fail to send are dropped instead
+        of silently lingering until their own receive loop notices.
+        """
+        connections = list(self.active_connections)
+        if not connections:
+            return
+
+        results = await asyncio.gather(
+            *(connection.send_bytes(frame_bytes) for connection in connections),
+            return_exceptions=True,
+        )
+        for connection, result in zip(connections, results):
+            if isinstance(result, Exception):
+                self.disconnect(connection)
 
     async def broadcast_notification(self, data: dict):
-        """Send JSON check-in data (Name, Time, Status) for Toasts"""
-        for connection in self.active_connections:
-            try:
-                await connection.send_json(data)
-            except Exception:
-                continue
+        """Send JSON check-in data (Name, Time, Status) for Toasts, in parallel."""
+        connections = list(self.active_connections)
+        if not connections:
+            return
+
+        results = await asyncio.gather(
+            *(connection.send_json(data) for connection in connections),
+            return_exceptions=True,
+        )
+        for connection, result in zip(connections, results):
+            if isinstance(result, Exception):
+                self.disconnect(connection)
 
 
 manager = ConnectionManager()

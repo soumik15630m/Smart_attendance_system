@@ -4,6 +4,7 @@ import sys
 import threading
 import time
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 
 import cv2
 import numpy as np
@@ -154,6 +155,12 @@ state_lock = threading.Lock()
 last_api_call = 0
 running = True
 
+# Bounds worst-case thread/resource usage for recognition API calls instead
+# of spawning one unmanaged thread per call. The >1.0s gate in ai_worker()
+# already limits new submissions to roughly 1/sec, so 2 workers is ample
+# headroom without changing observed behavior.
+recognition_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="recog")
+
 
 def get_brightness(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -237,11 +244,9 @@ def ai_worker():
                 ):
                     if (current_time - last_api_call) > 1.0:
                         last_api_call = current_time
-                        threading.Thread(
-                            target=verify_face_worker,
-                            args=(face.embedding.tolist(), face_key),
-                            daemon=True,
-                        ).start()
+                        recognition_executor.submit(
+                            verify_face_worker, face.embedding.tolist(), face_key
+                        )
 
         with state_lock:
             detected_faces = valid_faces

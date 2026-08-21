@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.attendance import Attendance
 from src.redis_config import CacheClient
+from src.utils.logging import logger
 
 
 class AttendanceService:
@@ -16,12 +17,23 @@ class AttendanceService:
         try:
             return bool(await self.cache.get(key))
         except Exception:
+            logger.warning(
+                "Cache unavailable on cooldown check, falling back to DB "
+                "unique constraint for key=%s",
+                key,
+                exc_info=True,
+            )
             return False
 
     async def _mark_recently_marked(self, key: str) -> None:
         try:
             await self.cache.setex(key, 43200, "marked")
         except Exception:
+            logger.warning(
+                "Cache unavailable, could not set cooldown for key=%s",
+                key,
+                exc_info=True,
+            )
             return
 
     async def mark_attendance(self, person_id: int, confidence_score: float):

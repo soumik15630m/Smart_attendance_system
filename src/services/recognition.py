@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
@@ -15,6 +15,13 @@ class RecognitionService:
         self, embedding: List[float]
     ) -> Optional[Tuple[Person, float]]:
         """Return (person, distance) for the nearest active match below threshold."""
+
+        # SET LOCAL scopes this to the current transaction only, so it can't
+        # leak into other requests sharing a pooled connection.
+        await self.db.execute(
+            text("SET LOCAL hnsw.ef_search = :ef_search"),
+            {"ef_search": settings.HNSW_EF_SEARCH},
+        )
 
         query_with_dist = (
             select(
