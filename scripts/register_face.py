@@ -4,7 +4,10 @@ import warnings
 
 import cv2
 import requests
+from dotenv import load_dotenv
 from insightface.app import FaceAnalysis
+
+load_dotenv()
 
 SERVER_IP = os.getenv("SERVER_IP", "127.0.0.1")
 SERVER_PORT = os.getenv("SERVER_PORT", "8000")
@@ -126,6 +129,11 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
                 if response.status_code == 200:
                     print(f" Success! {name} registered.")
                     break
+                elif response.status_code == 401:
+                    print(
+                        " Failed: 401 Unauthorized. Check that API_KEY in your "
+                        ".env matches the server's API_KEY."
+                    )
                 else:
                     print(f" Failed: {response.text}")
             except Exception as e:

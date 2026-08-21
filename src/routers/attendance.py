@@ -13,8 +13,11 @@ from src.redis_config import get_redis
 from src.schemas.attendance import AttendanceRead
 from src.services.attendance import AttendanceService
 from src.services.recognition import RecognitionService
+from src.utils.security import verify_api_key
 
-router = APIRouter(prefix="/attendance", tags=["attendance"])
+router = APIRouter(
+    prefix="/attendance", tags=["attendance"], dependencies=[Depends(verify_api_key)]
+)
 
 
 class IdentifyRequest(BaseModel):
@@ -31,12 +34,15 @@ async def identify_and_mark(
     rec_service = RecognitionService(db)
     att_service = AttendanceService(db, cache)
 
-    person = await rec_service.find_nearest_match(request.embedding)
+    match = await rec_service.find_nearest_match(request.embedding)
 
-    if not person:
+    if not match:
         return {"status": "unknown", "message": "No matching person found"}
 
-    record, created = await att_service.mark_attendance(person.id)
+    person, distance = match
+    confidence_score = max(0.0, min(1.0, 1.0 - distance))
+
+    record, created = await att_service.mark_attendance(person.id, confidence_score)
 
     if created:
         return {
@@ -54,8 +60,8 @@ async def identify_and_mark(
 
 @router.get("/history", response_model=List[AttendanceRead])
 async def get_attendance_history(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
     date: Optional[str] = Query(None, description="Filter by date (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
 ):

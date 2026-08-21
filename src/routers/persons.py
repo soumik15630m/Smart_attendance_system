@@ -7,8 +7,11 @@ from src.database import get_db
 from src.models.person import Person
 from src.schemas.person import PersonCreate, PersonRead
 from src.services.recognition import RecognitionService
+from src.utils.security import verify_api_key
 
-router = APIRouter(prefix="/persons", tags=["persons"])
+router = APIRouter(
+    prefix="/persons", tags=["persons"], dependencies=[Depends(verify_api_key)]
+)
 
 
 @router.post("/register", response_model=PersonRead)
@@ -25,9 +28,10 @@ async def register_person(person_in: PersonCreate, db: AsyncSession = Depends(ge
             )
 
     rec_service = RecognitionService(db)
-    existing_person = await rec_service.find_nearest_match(person_in.embedding)
+    existing_match = await rec_service.find_nearest_match(person_in.embedding)
 
-    if existing_person:
+    if existing_match:
+        existing_person, _ = existing_match
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Face already registered! Matched with: {existing_person.name} ({existing_person.employee_id})",

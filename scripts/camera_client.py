@@ -180,6 +180,11 @@ def verify_face_worker(embedding_list, face_key):
                     "color": color,
                     "expiry": time.time() + 5.0,
                 }
+        elif response.status_code == 401:
+            print(
+                "[!] 401 Unauthorized from server. Check that API_KEY in your "
+                ".env matches the server's API_KEY."
+            )
     except Exception:
         pass
 
