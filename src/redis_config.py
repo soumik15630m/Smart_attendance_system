@@ -17,8 +17,8 @@ load_dotenv()
 CACHE_BACKEND = os.getenv("CACHE_BACKEND", "auto").strip().lower()
 REDIS_URL = os.getenv("REDIS_URL", "").strip()
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-REDIS_DB = int(os.getenv("REDIS_DB", 0))
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 UPSTASH_REDIS_REST_URL = os.getenv("UPSTASH_REDIS_REST_URL", "").strip()
 UPSTASH_REDIS_REST_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", "").strip()
 AUTO_START_LOCAL_REDIS = os.getenv(
@@ -297,7 +297,7 @@ async def _wait_for_redis_ready(timeout_seconds: float) -> bool:
             cache = await _build_redis_cache()
             await cache.close()
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001 - retry until deadline
             await asyncio.sleep(0.5)
 
     return False
@@ -353,7 +353,7 @@ async def _start_local_redis_if_needed(original_error: Exception) -> None:
             failures.append(
                 f"{' '.join(command)} (process launched but Redis not ready)"
             )
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - collected, next command tried
             failures.append(f"{' '.join(command)} ({error})")
 
     joined = "; ".join(failures)
@@ -376,7 +376,7 @@ async def _build_cache_client() -> CacheClient:
                 await upstash_cache.ping()
                 print("Cache backend: Upstash REST")
                 return upstash_cache
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 - falls back to Redis TCP
                 await upstash_cache.close()
                 print(f"Upstash REST unavailable: {error}")
         elif backend == "upstash_rest":
@@ -390,7 +390,7 @@ async def _build_cache_client() -> CacheClient:
             cache = await _build_redis_cache()
             print("Cache backend: Redis TCP")
             return cache
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - triggers local Redis auto-start
             print(f"Redis unavailable: {error}")
             await _start_local_redis_if_needed(error)
             cache = await _build_redis_cache()

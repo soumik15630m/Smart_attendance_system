@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.4
+    hooks:
+      - id: ruff
+        args: [--extend-select, I, --fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports]
+        additional_dependencies: [types-requests, types-redis]
+
+  - repo: local
+    hooks:
+      - id: check-deps-sync
+        name: check pyproject/requirements are in sync
+        entry: python scripts/check_deps_sync.py
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|requirements\.txt)$

@@ -56,7 +56,7 @@ async def register_person(person_in: PersonCreate, db: AsyncSession = Depends(ge
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Integrity Error: Duplicate data or invalid format.",
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - mapped to 500, not raised bare
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)

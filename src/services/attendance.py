@@ -16,7 +16,7 @@ class AttendanceService:
     async def _is_recently_marked(self, key: str) -> bool:
         try:
             return bool(await self.cache.get(key))
-        except Exception:
+        except Exception:  # noqa: BLE001 - cache outage falls back to DB constraint
             logger.warning(
                 "Cache unavailable on cooldown check, falling back to DB "
                 "unique constraint for key=%s",
@@ -28,7 +28,7 @@ class AttendanceService:
     async def _mark_recently_marked(self, key: str) -> None:
         try:
             await self.cache.setex(key, 43200, "marked")
-        except Exception:
+        except Exception:  # noqa: BLE001 - cache outage is non-fatal here
             logger.warning(
                 "Cache unavailable, could not set cooldown for key=%s",
                 key,
@@ -37,7 +37,7 @@ class AttendanceService:
             return
 
     async def mark_attendance(self, person_id: int, confidence_score: float):
-        today = datetime.date.today()
+        today = datetime.date.today()  # noqa: DTZ011 - matches Attendance.date storage
         cache_key = f"attendance:{person_id}:{today}"
 
         if await self._is_recently_marked(cache_key):

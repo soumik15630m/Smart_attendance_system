@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -13,12 +11,10 @@ class Person(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    employee_id: Mapped[Optional[str]] = mapped_column(
-        String(50), unique=True, index=True
-    )
+    employee_id: Mapped[str | None] = mapped_column(String(50), unique=True, index=True)
     role: Mapped[str] = mapped_column(String(20), server_default="employee")
 
-    embedding: Mapped[List[float]] = mapped_column(Vector(512), nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(512), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     attendance_logs = relationship(
         "Attendance", back_populates="person", cascade="all, delete-orphan"

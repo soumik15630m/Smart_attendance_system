@@ -67,7 +67,9 @@ async def _db_summary(db: AsyncSession) -> dict[str, int | str | bool | None]:
     try:
         people_count_result = await db.execute(select(func.count(Person.id)))
         attendance_today_result = await db.execute(
-            select(func.count(Attendance.id)).where(Attendance.date == date.today())
+            select(func.count(Attendance.id)).where(
+                Attendance.date == date.today()  # noqa: DTZ011 - matches Attendance.date storage
+            )
         )
         return {
             "db_status": "up",
@@ -75,7 +77,7 @@ async def _db_summary(db: AsyncSession) -> dict[str, int | str | bool | None]:
             "attendance_today": int(attendance_today_result.scalar_one() or 0),
             "db_error": None,
         }
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - surfaced as db_status/db_error, not raised
         return {
             "db_status": "down",
             "people_count": None,
@@ -173,8 +175,8 @@ async def onboarding_status(request: Request, db: AsyncSession = Depends(get_db)
 
     people_count = db_data.get("people_count")
     attendance_today = db_data.get("attendance_today")
-    register_complete = bool(people_count and people_count > 0)
-    attendance_seen = bool(attendance_today and attendance_today > 0)
+    register_complete = isinstance(people_count, int) and people_count > 0
+    attendance_seen = isinstance(attendance_today, int) and attendance_today > 0
 
     steps = [
         {
@@ -250,5 +252,5 @@ async def recent_attendance(
                 }
             )
         return {"records": rows}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - surfaced as error field, not raised
         return {"records": [], "error": str(exc)}

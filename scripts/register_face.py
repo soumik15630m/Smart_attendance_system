@@ -4,11 +4,10 @@ import warnings
 
 import cv2
 import numpy as np
+import onnxruntime as ort
 import requests
 from dotenv import load_dotenv
 from insightface.app import FaceAnalysis
-
-import onnxruntime as ort
 
 load_dotenv()
 
@@ -22,16 +21,16 @@ REG_URL = f"http://{SERVER_IP}:{SERVER_PORT}/persons/register"
 # samples until the running average template stops changing meaningfully
 # (cosine similarity between successive averages clears CONVERGENCE_COSINE),
 # within a sane min/max so it can't stop too early or run forever.
-MIN_SAMPLES = int(os.getenv("MIN_SAMPLES", 3))
-MAX_SAMPLES = int(os.getenv("MAX_SAMPLES", 8))
-CONVERGENCE_COSINE = float(os.getenv("CONVERGENCE_COSINE", 0.999))
-MIN_DET_SCORE = float(os.getenv("MIN_DET_SCORE", 0.65))
+MIN_SAMPLES = int(os.getenv("MIN_SAMPLES", "3"))
+MAX_SAMPLES = int(os.getenv("MAX_SAMPLES", "8"))
+CONVERGENCE_COSINE = float(os.getenv("CONVERGENCE_COSINE", "0.999"))
+MIN_DET_SCORE = float(os.getenv("MIN_DET_SCORE", "0.65"))
 
 # Blur gate calibrates to this session's own footage instead of one fixed
 # number: once we've seen a reasonably sharp frame, later frames need to
 # clear a fraction of the best sharpness observed so far.
-BLUR_FLOOR = float(os.getenv("BLUR_FLOOR", 25.0))
-BLUR_RELATIVE_FRACTION = float(os.getenv("BLUR_RELATIVE_FRACTION", 0.5))
+BLUR_FLOOR = float(os.getenv("BLUR_FLOOR", "25.0"))
+BLUR_RELATIVE_FRACTION = float(os.getenv("BLUR_RELATIVE_FRACTION", "0.5"))
 
 default_cuda_path = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8\bin"
 cuda_bin = os.getenv("CUDA_PATH_BIN", default_cuda_path)
@@ -41,7 +40,7 @@ if os.path.exists(cuda_bin):
     if hasattr(os, "add_dll_directory"):
         try:
             os.add_dll_directory(cuda_bin)
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 - CUDA path is optional
             pass
 
 print("--------------------------------------------------")
@@ -60,7 +59,7 @@ warnings.filterwarnings("ignore")
 # having to keep two env vars in sync by hand.
 try:
     _providers = ort.get_available_providers()
-except Exception:
+except Exception:  # noqa: BLE001 - falls back to CPU model choice
     _providers = []
 _auto_model = "buffalo_l" if "CUDAExecutionProvider" in _providers else "buffalo_s"
 FACE_MODEL_NAME = os.getenv("FACE_MODEL_NAME", "") or _auto_model
@@ -111,7 +110,9 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
         return
 
     print("\n[Controls]")
-    print(f"  's' -> Capture sample (min {MIN_SAMPLES}, up to {MAX_SAMPLES}; vary angle slightly)")
+    print(
+        f"  's' -> Capture sample (min {MIN_SAMPLES}, up to {MAX_SAMPLES}; vary angle slightly)"
+    )
     print("  'q' -> Quit")
 
     collected_embeddings: list[np.ndarray] = []
@@ -156,7 +157,9 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
                 )
                 ready_to_capture = True
 
-            cv2.rectangle(display_frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), status_color, 2)
+            cv2.rectangle(
+                display_frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), status_color, 2
+            )
         elif len(faces) > 1:
             status_color = (0, 255, 255)
             status_text = "Too many faces! Only 1 allowed."
@@ -190,7 +193,9 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
                 # this sample tells us whether the average is still moving
                 # meaningfully or has settled - i.e. more samples would add
                 # noise rather than signal.
-                denom = np.linalg.norm(previous_average) * np.linalg.norm(running_average)
+                denom = np.linalg.norm(previous_average) * np.linalg.norm(
+                    running_average
+                )
                 similarity = (
                     float(np.dot(previous_average, running_average) / denom)
                     if denom > 0
@@ -204,7 +209,9 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
                 # embeddings live on - this keeps cosine distance
                 # comparisons well-behaved downstream.
                 norm = np.linalg.norm(running_average)
-                final_embedding = running_average / norm if norm > 0 else running_average
+                final_embedding = (
+                    running_average / norm if norm > 0 else running_average
+                )
 
                 payload = {
                     "name": name,
@@ -213,7 +220,9 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
                     "embedding": final_embedding.tolist(),
                 }
 
-                print(f"Sending averaged template ({sample_count} samples) to server...")
+                print(
+                    f"Sending averaged template ({sample_count} samples) to server..."
+                )
                 try:
                     headers = {"X-API-Key": os.getenv("API_KEY", "")}
                     response = requests.post(
@@ -221,7 +230,9 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
                     )
 
                     if response.status_code == 200:
-                        print(f" Success! {name} registered from {sample_count} samples.")
+                        print(
+                            f" Success! {name} registered from {sample_count} samples."
+                        )
                     elif response.status_code == 401:
                         print(
                             " Failed: 401 Unauthorized. Check that API_KEY in your "
@@ -229,7 +240,7 @@ def enroll(name_override: str | None = None, employee_id_override: str | None = 
                         )
                     else:
                         print(f" Failed: {response.text}")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - any request failure is reported
                     print(f" Connection Error: {e}")
                 break
 

@@ -7,6 +7,7 @@ python-dotenv
 # DB + cache
 sqlalchemy>=2.0.46
 asyncpg
+alembic>=1.13.0
 redis[hiredis]>=5.0.0
 
 # AI
@@ -21,4 +22,3 @@ httpx
 pydantic-settings
 pgvector
 pydantic
-booktype

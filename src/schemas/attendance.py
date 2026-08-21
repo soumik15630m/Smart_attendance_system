@@ -1,5 +1,4 @@
 import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -8,7 +7,7 @@ from .person import PersonRead
 
 class AttendanceBase(BaseModel):
     method: str = Field("face_bio", examples=["face_bio", "manual", "qr"])
-    confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0)
+    confidence_score: float | None = Field(None, ge=0.0, le=1.0)
 
 
 class AttendanceCreate(AttendanceBase):
@@ -22,6 +21,6 @@ class AttendanceRead(AttendanceBase):
     date: datetime.date
     timestamp: datetime.datetime = Field(alias="created_at")
 
-    person: Optional[PersonRead] = None
+    person: PersonRead | None = None
 
     model_config = ConfigDict(from_attributes=True)

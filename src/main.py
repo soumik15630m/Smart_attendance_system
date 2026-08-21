@@ -39,13 +39,13 @@ async def lifespan(app: FastAPI):
         )
         command.upgrade(alembic_cfg, "head")
         print("Database is up to date.")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - non-fatal, app continues to start
         print(f" Migration Warning: {e}")
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
         print("Database connection established.")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - logged, app continues to start
         print(f"CRITICAL: Database connection failed! {e}")
     try:
         await init_cache()

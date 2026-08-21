@@ -61,10 +61,10 @@ async def show_attendance():
                     time_str = record.created_at.strftime("%H:%M:%S")
 
                     print(
-                        f" {record.id:<5} | {str(record.date):<12} | {time_str:<10} | {name:<20} | {emp_id:<15} | {record.method:<10}"
+                        f" {record.id:<5} | {record.date!s:<12} | {time_str:<10} | {name:<20} | {emp_id:<15} | {record.method:<10}"
                     )
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - any DB failure is reported to the user
         print(f"\n[!] Error fetching data: {e}")
         if "DATABASE_URL" in str(e):
             print("    Hint: Check your .env file location.")

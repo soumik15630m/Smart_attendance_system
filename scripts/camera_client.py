@@ -16,10 +16,10 @@ load_dotenv()
 
 SERVER_IP = os.getenv("SERVER_IP", "127.0.0.1")
 SERVER_PORT = os.getenv("SERVER_PORT", "8000")
-CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", 0))
+CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", "0"))
 
-MIN_BRIGHTNESS = int(os.getenv("MIN_BRIGHTNESS", 60))
-MIN_DET_SCORE = float(os.getenv("MIN_DET_SCORE", 0.65))
+MIN_BRIGHTNESS = int(os.getenv("MIN_BRIGHTNESS", "60"))
+MIN_DET_SCORE = float(os.getenv("MIN_DET_SCORE", "0.65"))
 
 # --- Tracking / smoothing tuning -------------------------------------------------
 # These control how a detected face is turned into a stable "track" across
@@ -31,37 +31,37 @@ MIN_DET_SCORE = float(os.getenv("MIN_DET_SCORE", 0.65))
 # camera is 480p or 4K, and whether it's running at 12fps on CPU or 60fps on
 # GPU. Where a value genuinely can't be derived from something measurable,
 # it's still exposed as an env var instead of buried as a magic number.
-IOU_MATCH_THRESHOLD = float(os.getenv("IOU_MATCH_THRESHOLD", 0.3))
-TRACK_TIMEOUT = float(os.getenv("TRACK_TIMEOUT_SECONDS", 1.0))
-BBOX_SMOOTHING_ALPHA = float(os.getenv("BBOX_SMOOTHING_ALPHA", 0.35))
+IOU_MATCH_THRESHOLD = float(os.getenv("IOU_MATCH_THRESHOLD", "0.3"))
+TRACK_TIMEOUT = float(os.getenv("TRACK_TIMEOUT_SECONDS", "1.0"))
+BBOX_SMOOTHING_ALPHA = float(os.getenv("BBOX_SMOOTHING_ALPHA", "0.35"))
 
 # A face must hold still for this long (not a fixed frame count) before
 # we'll trust it enough to attempt recognition. Converted to an actual
 # frame count at runtime using the camera's *measured* fps.
-STABILITY_SECONDS = float(os.getenv("STABILITY_SECONDS", 0.18))
+STABILITY_SECONDS = float(os.getenv("STABILITY_SECONDS", "0.18"))
 
 # Movement tolerance as a fraction of the face's own width, so a face that
 # fills a small part of the frame isn't held to the same pixel tolerance as
 # one that fills most of it.
-MOVEMENT_TOLERANCE_RATIO = float(os.getenv("MOVEMENT_TOLERANCE_RATIO", 0.10))
+MOVEMENT_TOLERANCE_RATIO = float(os.getenv("MOVEMENT_TOLERANCE_RATIO", "0.10"))
 
 # Minimum face size as a fraction of frame width rather than raw pixels, so
 # it doesn't need retuning if the camera resolution changes.
-MIN_FACE_WIDTH_RATIO = float(os.getenv("MIN_FACE_WIDTH_RATIO", 0.06))
+MIN_FACE_WIDTH_RATIO = float(os.getenv("MIN_FACE_WIDTH_RATIO", "0.06"))
 
 # Sharpness (blur) gate: rather than one fixed Laplacian-variance number,
 # we track a running mean/std of the scores this camera actually produces
 # and require a candidate frame to sit comfortably above that camera's own
 # baseline. See RollingStats below.
-BLUR_FLOOR = float(os.getenv("BLUR_FLOOR", 25.0))
-BLUR_STD_MARGIN = float(os.getenv("BLUR_STD_MARGIN", 0.5))
-BLUR_WARMUP_SAMPLES = int(os.getenv("BLUR_WARMUP_SAMPLES", 20))
+BLUR_FLOOR = float(os.getenv("BLUR_FLOOR", "25.0"))
+BLUR_STD_MARGIN = float(os.getenv("BLUR_STD_MARGIN", "0.5"))
+BLUR_WARMUP_SAMPLES = int(os.getenv("BLUR_WARMUP_SAMPLES", "20"))
 
 # Cooldown before re-querying an unlocked track backs off exponentially on
 # repeated "unknown" results (no point hammering a face the server keeps
 # not recognizing), and resets once it locks in a match.
-RETRY_BASE_SECONDS = float(os.getenv("RETRY_BASE_SECONDS", 1.5))
-RETRY_MAX_SECONDS = float(os.getenv("RETRY_MAX_SECONDS", 10.0))
+RETRY_BASE_SECONDS = float(os.getenv("RETRY_BASE_SECONDS", "1.5"))
+RETRY_MAX_SECONDS = float(os.getenv("RETRY_MAX_SECONDS", "10.0"))
 
 # Pick a recognition model automatically based on available compute unless
 # the user pins one explicitly: the larger backbone is worth it on GPU, but
@@ -81,12 +81,12 @@ if cuda_bin and os.path.exists(cuda_bin):
         if add_dll:
             try:
                 add_dll(cuda_bin)
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 - CUDA path is optional
                 pass
 
 warnings.filterwarnings("ignore")
-import onnxruntime as ort  # noqa: E402
-from insightface.app import FaceAnalysis  # noqa: E402
+import onnxruntime as ort
+from insightface.app import FaceAnalysis
 
 
 class ThreadedCamera:
@@ -151,7 +151,7 @@ class AsyncWebSocketClient:
                     while True:
                         frame_bytes = await self.queue.get()
                         await websocket.send(frame_bytes)
-            except Exception:
+            except Exception:  # noqa: BLE001 - any connection error triggers reconnect
                 await asyncio.sleep(2)
 
     def send_frame(self, frame_bytes: bytes) -> None:
@@ -159,7 +159,7 @@ class AsyncWebSocketClient:
             if self.queue.full():
                 try:
                     self.queue.get_nowait()
-                except Exception:
+                except Exception:  # noqa: BLE001, S110 - queue already drained
                     pass
             self.loop.call_soon_threadsafe(self.queue.put_nowait, frame_bytes)
 
@@ -184,7 +184,7 @@ try:
     else:
         print("    CUDA Not Found. Using Multi-threaded CPU mode.")
 
-except Exception as e:
+except Exception as e:  # noqa: BLE001 - any provider-check failure falls back to CPU
     print(f"    Error checking CUDA: {e}. Falling back to CPU.")
 
 # Larger backbone (buffalo_l) when we've got GPU headroom, smaller
@@ -317,6 +317,7 @@ class FaceTrack:
         self.locked = False  # True once confidently identified; stops re-querying
         self.last_attempt = 0.0
         self.consecutive_misses = 0  # drives exponential retry backoff
+        self._matched_face = None  # last detected face object matched to this track
 
     @staticmethod
     def _center(bbox):
@@ -355,7 +356,7 @@ class FaceTrack:
         if self.locked:
             return False
         backoff = min(
-            RETRY_MAX_SECONDS, RETRY_BASE_SECONDS * (2 ** self.consecutive_misses)
+            RETRY_MAX_SECONDS, RETRY_BASE_SECONDS * (2**self.consecutive_misses)
         )
         return (now - self.last_attempt) > backoff
 
@@ -366,7 +367,9 @@ class FaceTrack:
         """
         if blur_stats.n < BLUR_WARMUP_SAMPLES:
             return score >= BLUR_FLOOR
-        return score >= max(BLUR_FLOOR, blur_stats.mean - BLUR_STD_MARGIN * blur_stats.std)
+        return score >= max(
+            BLUR_FLOOR, blur_stats.mean - BLUR_STD_MARGIN * blur_stats.std
+        )
 
 
 def verify_face_worker(embedding_list, track_id):
@@ -404,7 +407,7 @@ def verify_face_worker(embedding_list, track_id):
                 "[!] 401 Unauthorized from server. Check that API_KEY in your "
                 ".env matches the server's API_KEY."
             )
-    except Exception:
+    except Exception:  # noqa: BLE001 - request failure counts as a miss, not a crash
         with tracks_lock:
             track = tracks.get(track_id)
             if track is not None:
@@ -446,7 +449,9 @@ def ai_worker():
 
         with tracks_lock:
             # Drop tracks nothing has matched to in a while.
-            for tid in [t for t, tr in tracks.items() if now - tr.last_seen > TRACK_TIMEOUT]:
+            for tid in [
+                t for t, tr in tracks.items() if now - tr.last_seen > TRACK_TIMEOUT
+            ]:
                 del tracks[tid]
 
             unmatched_faces = list(valid_faces)
@@ -538,7 +543,9 @@ def start_camera():
             )
 
         with tracks_lock:
-            tracks_to_draw = [(t.smoothed_bbox.copy(), t.name, t.color) for t in tracks.values()]
+            tracks_to_draw = [
+                (t.smoothed_bbox.copy(), t.name, t.color) for t in tracks.values()
+            ]
 
         # Drawn from the smoothed (EMA) bbox rather than the raw per-frame
         # detection box, so the rectangle glides instead of jittering with

@@ -43,7 +43,7 @@ for path in paths_to_check:
                 try:
                     add_dll(path)
                     found_paths.append(path)
-                except Exception:
+                except Exception:  # noqa: BLE001, S110 - path just skipped if invalid
                     pass
     else:
         print(f"    Folder defined in env NOT found: {path}")
@@ -83,7 +83,7 @@ try:
                 "dummy_model.onnx",
                 providers=["CUDAExecutionProvider"],
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - message content decides pass/fail
             if "Load model" in str(e) or "No such file" in str(e):
                 print("\n SUCCESS! CUDA Provider initialized successfully.")
             else:
@@ -91,7 +91,7 @@ try:
     else:
         print("\n CUDA Provider NOT listed. Python didn't find the library at all.")
 
-except Exception as e:
+except Exception as e:  # noqa: BLE001 - diagnostic script, report any failure
     print(f"\n Error: {e}")
 
 print("----------------------------------------------------------------")

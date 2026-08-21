@@ -28,8 +28,8 @@ async def db_health_check(db: AsyncSession = Depends(get_db)):
             raise HTTPException(
                 status_code=500, detail="Database returned unexpected result"
             )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - any DB failure maps to 503
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Database connection failed: {str(e)}",
+            detail=f"Database connection failed: {e!s}",
         )

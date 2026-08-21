@@ -1,5 +1,4 @@
 import datetime
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -21,7 +20,7 @@ router = APIRouter(
 
 
 class IdentifyRequest(BaseModel):
-    embedding: List[float]
+    embedding: list[float]
     camera_id: str
 
 
@@ -42,7 +41,7 @@ async def identify_and_mark(
     person, distance = match
     confidence_score = max(0.0, min(1.0, 1.0 - distance))
 
-    record, created = await att_service.mark_attendance(person.id, confidence_score)
+    _record, created = await att_service.mark_attendance(person.id, confidence_score)
 
     if created:
         return {
@@ -58,11 +57,11 @@ async def identify_and_mark(
         }
 
 
-@router.get("/history", response_model=List[AttendanceRead])
+@router.get("/history", response_model=list[AttendanceRead])
 async def get_attendance_history(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    date: Optional[str] = Query(None, description="Filter by date (YYYY-MM-DD)"),
+    date: str | None = Query(None, description="Filter by date (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -72,7 +71,9 @@ async def get_attendance_history(
 
     if date:
         try:
-            filter_date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+            filter_date = datetime.datetime.strptime(  # noqa: DTZ007 - date-only filter
+                date, "%Y-%m-%d"
+            ).date()
             query = query.where(Attendance.date == filter_date)
         except ValueError:
             raise HTTPException(

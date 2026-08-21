@@ -1,6 +1,5 @@
 import asyncio
 import ipaddress
-from typing import List
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -11,7 +10,7 @@ router = APIRouter(prefix="/ws", tags=["streaming"])
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()

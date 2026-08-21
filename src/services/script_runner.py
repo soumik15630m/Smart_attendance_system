@@ -140,10 +140,10 @@ class LocalScriptRunner:
             process.wait(timeout=5)
         except subprocess.TimeoutExpired:
             process.kill()
-        finally:
-            with self._lock:
-                state.logs.append("Stop signal sent.")
-                return self._serialize_script(spec, state)
+
+        with self._lock:
+            state.logs.append("Stop signal sent.")
+            return self._serialize_script(spec, state)
 
     def _stream_output(self, script_id: str, process: subprocess.Popen[str]) -> None:
         try:

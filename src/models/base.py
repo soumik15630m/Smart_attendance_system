@@ -11,8 +11,6 @@ class Base(AsyncAttrs, DeclarativeBase):
     Includes AsyncAttrs for async loading of relationships.
     """
 
-    pass
-
 
 class TimestampMixin:
     """Mixin to add created_at/updated_at to any model."""

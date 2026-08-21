@@ -1,5 +1,3 @@
-from typing import List, Optional, Tuple
-
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,8 +10,8 @@ class RecognitionService:
         self.db = db
 
     async def find_nearest_match(
-        self, embedding: List[float]
-    ) -> Optional[Tuple[Person, float]]:
+        self, embedding: list[float]
+    ) -> tuple[Person, float] | None:
         """Return (person, distance) for the nearest active match below threshold."""
 
         # SET LOCAL scopes this to the current transaction only, so it can't
