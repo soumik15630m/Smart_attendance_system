@@ -22,6 +22,7 @@ httpx
 pydantic-settings
 pgvector
 pydantic
+tomli; python_version < "3.11"  # tomllib backport, stdlib only from 3.11+
 
 # Security pins (transitive deps with known CVEs)
 jaraco.context>=6.1.0   # CVE-2026-23949: path traversal via malicious tar archives

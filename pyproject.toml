@@ -29,6 +29,7 @@ dependencies = [
     "alembic>=1.13.0",
     "requests>=2.31.0",
     "httpx>=0.27.0",
+    "tomli>=2.0.0; python_version < \"3.11\"",
     # Security pins (transitive deps with known CVEs) - keep in sync with requirements.txt
     "jaraco.context>=6.1.0",
     "msgpack>=1.2.1",
