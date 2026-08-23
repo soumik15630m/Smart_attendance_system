@@ -47,6 +47,9 @@ include = ["src*", "scripts*"]
 [tool.ruff.lint]
 ignore = ["B008"]  # FastAPI's Depends() idiom requires calls in argument defaults
 
+[tool.ruff.lint.per-file-ignores]
+"scripts/camera_client.py" = ["E402"]  # warnings.filterwarnings() must run before the noisy onnxruntime/insightface imports
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
