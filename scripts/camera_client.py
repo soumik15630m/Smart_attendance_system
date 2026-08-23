@@ -85,8 +85,8 @@ if cuda_bin and os.path.exists(cuda_bin):
                 pass
 
 warnings.filterwarnings("ignore")
-import onnxruntime as ort
-from insightface.app import FaceAnalysis
+import onnxruntime as ort  # noqa: E402
+from insightface.app import FaceAnalysis  # noqa: E402
 
 
 class ThreadedCamera:
