@@ -59,3 +59,25 @@ async def test_register_rejects_wrong_embedding_length(client):
         "/persons/register", json=_person_payload(embedding=[0.1] * 10)
     )
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_register_person_generic_exception_returns_500(
+    client, sample_embedding, monkeypatch
+):
+    """A non-IntegrityError failure during commit (e.g. the DB connection
+    dropping mid-request) should map to a 500, not bubble up as an
+    unhandled error.
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    async def _boom(self, *_args, **_kwargs):
+        raise ConnectionError("connection to server was lost")
+
+    monkeypatch.setattr(AsyncSession, "commit", _boom)
+
+    resp = await client.post(
+        "/persons/register", json=_person_payload(embedding=sample_embedding)
+    )
+    assert resp.status_code == 500
+    assert "connection to server was lost" in resp.json()["detail"]

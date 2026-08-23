@@ -41,19 +41,29 @@ async def identify_and_mark(
     person, distance = match
     confidence_score = max(0.0, min(1.0, 1.0 - distance))
 
+    # Capture the fields we need before calling mark_attendance: on a
+    # cache-outage fallback to the DB's unique constraint, that call
+    # rolls back the session, which expires every ORM object bound to
+    # it (including `person`, loaded above in this same session).
+    # Touching person.name/employee_id afterwards would then trigger an
+    # implicit synchronous refresh that SQLAlchemy's async engine can't
+    # perform outside of an awaited context, raising MissingGreenlet.
+    person_name = person.name
+    person_employee_id = person.employee_id
+
     _record, created = await att_service.mark_attendance(person.id, confidence_score)
 
     if created:
         return {
             "status": "success",
-            "person_name": person.name,
-            "employee_id": person.employee_id,
+            "person_name": person_name,
+            "employee_id": person_employee_id,
         }
     else:
         return {
             "status": "ignored",
             "message": "Attendance already marked recently",
-            "person_name": person.name,
+            "person_name": person_name,
         }
 
 

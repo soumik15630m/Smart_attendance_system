@@ -16,10 +16,15 @@ class RecognitionService:
 
         # SET LOCAL scopes this to the current transaction only, so it can't
         # leak into other requests sharing a pooled connection.
-        await self.db.execute(
-            text("SET LOCAL hnsw.ef_search = :ef_search"),
-            {"ef_search": settings.HNSW_EF_SEARCH},
-        )
+        #
+        # asyncpg sends parameterized statements through the extended query
+        # protocol, and Postgres's SET command does not accept a bind
+        # parameter ($1) as its value under that protocol -- it raises a
+        # syntax error. hnsw.ef_search is an internal, admin-controlled
+        # setting (not user input), so it's safe to inline as a literal
+        # once validated as an int.
+        ef_search = int(settings.HNSW_EF_SEARCH)
+        await self.db.execute(text(f"SET LOCAL hnsw.ef_search = {ef_search}"))
 
         query_with_dist = (
             select(

@@ -50,4 +50,12 @@ ignore = ["B008"]  # FastAPI's Depends() idiom requires calls in argument defaul
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+# Must match the fixture loop scope above. Our DB engine's connection pool
+# is created once at import time; if test *functions* ran on the default
+# per-function loop while the pool's connections were opened on the
+# session loop, checking out a pooled connection in a later test would
+# hand asyncpg a connection bound to a different event loop and raise
+# "Future attached to a different loop". Keeping both scopes at "session"
+# ensures every test reuses the same loop the pool was created on.
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]

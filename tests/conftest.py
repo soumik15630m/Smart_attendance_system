@@ -76,6 +76,51 @@ def fake_cache():
     return FakeCache()
 
 
+class RaisingCache:
+    """CacheClient stand-in that always raises, to exercise the
+    cache-failure fallback paths in AttendanceService (which are never
+    triggered by FakeCache, since it never raises).
+    """
+
+    async def get(self, key: str) -> str | None:
+        raise ConnectionError("cache unavailable")
+
+    async def setex(self, key: str, ttl_seconds: int, value: str) -> None:
+        raise ConnectionError("cache unavailable")
+
+    async def close(self) -> None:
+        pass
+
+
+@pytest.fixture
+def raising_cache():
+    return RaisingCache()
+
+
+@pytest_asyncio.fixture
+async def client_with_raising_cache(db_session, raising_cache):
+    """Same as `client`, but the cache backend always raises -- used to
+    exercise AttendanceService's cache-outage fallback to the DB unique
+    constraint.
+    """
+    from src.main import app
+
+    async def _get_db():
+        yield db_session
+
+    async def _get_redis():
+        return raising_cache
+
+    app.dependency_overrides[get_db] = _get_db
+    app.dependency_overrides[get_redis] = _get_redis
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
 @pytest_asyncio.fixture
 async def client(db_session, fake_cache):
     from src.main import app
